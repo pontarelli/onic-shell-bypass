@@ -264,6 +264,13 @@ module qdma_subsystem #(
   wire         c2h_byp_in_st_csh_rdy;
 
   wire         axil_aresetn;
+  
+  reg [63:0] qdma_c2h_pkt_addr;
+    reg  [2:0] qdma_c2h_port_id;
+    reg [10:0] qdma_c2h_qid;
+    reg  [7:0] qdma_c2h_func;
+    reg  [6:0] qdma_c2h_pfch_tag; 
+    reg        qdma_c2h_bypass_valid;
 
   // Reset is clocked by the 125MHz AXI-Lite clock
   generic_reset #(
@@ -304,7 +311,8 @@ module qdma_subsystem #(
   assign h2c_byp_in_st_no_dma       = 1'b0;
 
   assign c2h_byp_out_rdy            = 1'b1;
-  assign c2h_byp_in_st_csh_vld      = 1'b0;
+//  assign c2h_byp_in_st_csh_vld      = 1'b0;
+  assign c2h_byp_in_st_csh_vld = qdma_c2h_bypass_valid && axis_qdma_c2h_tlast && axis_qdma_c2h_tvalid && axis_qdma_c2h_tready;
   assign c2h_byp_in_st_csh_addr     = 0;
   assign c2h_byp_in_st_csh_port_id  = 0;
   assign c2h_byp_in_st_csh_qid      = 0;
@@ -417,14 +425,24 @@ module qdma_subsystem #(
     .c2h_byp_out_pfch_tag            (c2h_byp_out_pfch_tag),
     .c2h_byp_out_rdy                 (c2h_byp_out_rdy),
 
+    //.c2h_byp_in_st_csh_vld           (c2h_byp_in_st_csh_vld),
+    //.c2h_byp_in_st_csh_addr          (c2h_byp_in_st_csh_addr),
+    //.c2h_byp_in_st_csh_port_id       (c2h_byp_in_st_csh_port_id),
+    //.c2h_byp_in_st_csh_qid           (c2h_byp_in_st_csh_qid),
+    //.c2h_byp_in_st_csh_error         (c2h_byp_in_st_csh_error),
+    //.c2h_byp_in_st_csh_func          (c2h_byp_in_st_csh_func),
+    //.c2h_byp_in_st_csh_pfch_tag      (c2h_byp_in_st_csh_pfch_tag),
+    //.c2h_byp_in_st_csh_rdy           (c2h_byp_in_st_csh_rdy),
+
     .c2h_byp_in_st_csh_vld           (c2h_byp_in_st_csh_vld),
-    .c2h_byp_in_st_csh_addr          (c2h_byp_in_st_csh_addr),
-    .c2h_byp_in_st_csh_port_id       (c2h_byp_in_st_csh_port_id),
-    .c2h_byp_in_st_csh_qid           (c2h_byp_in_st_csh_qid),
+    .c2h_byp_in_st_csh_addr          (qdma_c2h_pkt_addr),
+    .c2h_byp_in_st_csh_port_id       (qdma_c2h_port_id),
+    .c2h_byp_in_st_csh_qid           (qdma_c2h_qid),
     .c2h_byp_in_st_csh_error         (c2h_byp_in_st_csh_error),
-    .c2h_byp_in_st_csh_func          (c2h_byp_in_st_csh_func),
-    .c2h_byp_in_st_csh_pfch_tag      (c2h_byp_in_st_csh_pfch_tag),
+    .c2h_byp_in_st_csh_func          (qdma_c2h_func),
+    .c2h_byp_in_st_csh_pfch_tag      (qdma_c2h_pfch_tag),
     .c2h_byp_in_st_csh_rdy           (c2h_byp_in_st_csh_rdy),
+
 
     .pcie_refclk                     (pcie_refclk),
     .pcie_refclk_gt                  (pcie_refclk_gt),
@@ -701,6 +719,10 @@ module qdma_subsystem #(
       .aclk                (axil_cfg_aclk),
       .aresetn             (axil_aresetn)
     );
+    
+
+
+    
 
     qdma_subsystem_register reg_inst (
       .s_axil_awvalid (axil_awvalid),
@@ -719,7 +741,19 @@ module qdma_subsystem #(
       .s_axil_rdata   (axil_rdata),
       .s_axil_rresp   (axil_rresp),
       .s_axil_rready  (axil_rready),
+      
+//      output reg [63:0] reg_pkt_addr,
+//  output reg  [2:0] reg_port_id,
+//  output reg [10:0] reg_qid,
+//  output reg [7:0] reg_func,
+//  output reg [6:0] reg_pfch_tag,
 
+      .reg_pkt_addr(qdma_c2h_pkt_addr),
+      .reg_port_id(qdma_c2h_port_id),
+      .reg_qid(qdma_c2h_qid),
+      .reg_func(qdma_c2h_func),
+      .reg_pfch_tag(qdma_c2h_pfch_tag),
+      .reg_bypass_valid(qdma_c2h_bypass_valid),
       .axil_aclk      (axil_cfg_aclk),
       .axis_aclk      (axis_aclk),
       .axil_aresetn   (axil_aresetn)

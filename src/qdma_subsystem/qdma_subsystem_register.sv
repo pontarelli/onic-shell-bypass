@@ -52,13 +52,35 @@ module qdma_subsystem_register (
   output [31:0] s_axil_rdata,
   output  [1:0] s_axil_rresp,
   input         s_axil_rready,
+  output reg [63:0] reg_pkt_addr,
+  output reg  [2:0] reg_port_id,
+  output reg [10:0] reg_qid,
+  output reg [7:0] reg_func,
+  output reg [6:0] reg_pfch_tag,
+  output reg       reg_bypass_valid,
+  
 
   input         axil_aclk,
   input         axis_aclk,
   input         axil_aresetn
 );
 
-  localparam C_ADDR_W = 15;
+  localparam C_ADDR_W = 12;
+  
+  localparam REG_ADDR_LOWER   = 12'h110;
+  localparam REG_ADDR_UPPER   = 12'h114;
+  localparam REG_PORT_ID      = 12'h118;
+  localparam REG_QID          = 12'h11C;
+  localparam REG_FUNC         = 12'h120;
+  localparam REG_PFCH_TAG     = 12'h124;
+  localparam REG_BYPASS_VALID = 12'h128;
+  
+//  reg  [31:0] reg_addr_lower;
+//  reg  [31:0] reg_addr_higher;
+//  reg   [2:0] reg_port_id;
+//  reg  [10:0] reg_qid;
+//  reg   [7:0] reg_func;
+//  reg   [6:0] reg_pfch_tag;
 
   wire                reg_en;
   wire                reg_we;
@@ -106,10 +128,71 @@ module qdma_subsystem_register (
     end
     else if (reg_en && ~reg_we) begin
       case (reg_addr)
+        REG_ADDR_LOWER: begin
+            reg_dout <= reg_pkt_addr[31:0];
+        end
+        REG_ADDR_UPPER: begin
+            reg_dout <= reg_pkt_addr[63:32];
+        end
+        REG_PORT_ID: begin
+            reg_dout <= reg_port_id;
+        end
+        REG_QID: begin
+            reg_dout <= reg_qid;
+        end
+        REG_FUNC: begin
+            reg_dout <= reg_func;
+        end
+        REG_PFCH_TAG: begin
+            reg_dout <= reg_pfch_tag;
+        end
+        REG_BYPASS_VALID: begin
+            reg_dout <= reg_bypass_valid;
+        end
         default: begin
           reg_dout <= 32'hDEADBEEF;
         end
       endcase
+    end
+  end
+  
+  always @(posedge axil_aclk) begin
+    if (~axil_aresetn) begin
+        reg_pkt_addr <= 0;    
+        reg_port_id <= 0;
+        reg_qid <= 0;     
+        reg_func <= 0;    
+        reg_pfch_tag <= 0;
+        reg_bypass_valid <= 0;
+    end else begin
+        if (reg_en && reg_we) begin
+            case (reg_addr)
+                REG_ADDR_LOWER: begin
+                    reg_pkt_addr[31:0] <= reg_din;
+                end
+                REG_ADDR_UPPER: begin
+                    reg_pkt_addr[63:32] <= reg_din;
+                end
+                REG_PORT_ID: begin
+                    reg_port_id <= reg_din;
+                end
+                REG_QID: begin
+                    reg_qid <= reg_din;
+                end
+                REG_FUNC: begin
+                    reg_func <= reg_din;
+                end
+                REG_PFCH_TAG: begin
+                    reg_pfch_tag <= reg_din;
+                end
+                REG_BYPASS_VALID: begin
+                    reg_bypass_valid <= reg_din;
+                end
+                default: begin
+//                  reg_dout <= 32'hDEADBEEF;
+                end
+            endcase
+        end
     end
   end
 

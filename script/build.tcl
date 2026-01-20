@@ -101,8 +101,8 @@ array set build_options {
     -rebuild     0
     -jobs        8
     -synth_ip    1
-    -impl        0
-    -post_impl   0
+    -impl        1
+    -post_impl   1
     -user_plugin ""
     -bitstream_userid  "0xDEADC0DE"
     -bitstream_usr_access "0x66669999"
@@ -117,7 +117,7 @@ array set design_params {
     -use_phys_func    1
     -num_phys_func    1
     -num_qdma         1
-    -num_queue        512
+    -num_queue        2048
     -num_cmac_port    1
 }
 set design_params(-build_timestamp) [clock format [clock seconds] -format %m%d%H%M]
@@ -445,7 +445,7 @@ if {$sim} {
 # Implement design
 if {$impl} {
     update_compile_order -fileset sources_1
-    _do_impl $jobs {"Vivado Implementation Defaults"}
+    _do_impl $jobs {"Performance_Explore"}
 }
 
 if {$post_impl} {

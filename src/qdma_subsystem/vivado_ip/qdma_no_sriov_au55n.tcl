@@ -55,6 +55,8 @@ set_property -dict {
     CONFIG.pf1_class_code_sub_qdma {80}
     CONFIG.pf1_sub_class_interface_menu_qdma {Other_network_controller}
     CONFIG.pf1_class_code_qdma {028000}
+    CONFIG.pfch_cache_depth {64}
+    CONFIG.wrb_coal_max_buf {32}
 } [get_ips $qdma]
 set_property CONFIG.tl_pf_enable_reg $num_phys_func [get_ips $qdma]
 set_property CONFIG.num_queues $num_queue [get_ips $qdma]

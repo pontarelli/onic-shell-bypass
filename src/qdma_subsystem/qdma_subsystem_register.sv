@@ -52,13 +52,19 @@ module qdma_subsystem_register (
   output [31:0] s_axil_rdata,
   output  [1:0] s_axil_rresp,
   input         s_axil_rready,
+
   output reg [63:0] reg_pkt_addr,
+  output reg [31:0] reg_num_desc,
   output reg  [2:0] reg_port_id,
   output reg [10:0] reg_qid,
   output reg [7:0] reg_func,
   output reg [6:0] reg_pfch_tag,
   output reg       reg_bypass_valid,
   
+  
+  input      [31:0] pkt_counter,
+  input      [63:0] dst_addr,
+  input      [63:0] mult_result,
 
   input         axil_aclk,
   input         axis_aclk,
@@ -66,14 +72,23 @@ module qdma_subsystem_register (
 );
 
   localparam C_ADDR_W = 12;
+  localparam MODULE_ID = 32'hA9DBEA;
   
-  localparam REG_ADDR_LOWER   = 12'h110;
-  localparam REG_ADDR_UPPER   = 12'h114;
-  localparam REG_PORT_ID      = 12'h118;
-  localparam REG_QID          = 12'h11C;
-  localparam REG_FUNC         = 12'h120;
-  localparam REG_PFCH_TAG     = 12'h124;
-  localparam REG_BYPASS_VALID = 12'h128;
+  localparam REG_ADDR_LOWER     = 12'h110;
+  localparam REG_ADDR_UPPER     = 12'h114;
+  localparam REG_PORT_ID        = 12'h118;
+  localparam REG_QID            = 12'h11C;
+  localparam REG_FUNC           = 12'h120;
+  localparam REG_PFCH_TAG       = 12'h124;
+  localparam REG_BYPASS_VALID   = 12'h128;
+  localparam REG_PKT_COUNTER    = 12'h12C;
+  localparam REG_DST_ADDR_LOWER = 12'h130;
+  localparam REG_DST_ADDR_UPPER = 12'h134;
+  localparam REG_MULT_LOWER     = 12'h138;
+  localparam REG_MULT_UPPER     = 12'h13C;
+  localparam REG_NUM_DESC       = 12'h140;
+
+  localparam REG_MODULE_ID      = 12'h400;
   
 //  reg  [31:0] reg_addr_lower;
 //  reg  [31:0] reg_addr_higher;
@@ -149,6 +164,27 @@ module qdma_subsystem_register (
         REG_BYPASS_VALID: begin
             reg_dout <= reg_bypass_valid;
         end
+        REG_PKT_COUNTER: begin
+            reg_dout <= pkt_counter;
+        end
+        REG_ADDR_LOWER: begin
+            reg_dout <= dst_addr[31:0];
+        end
+        REG_ADDR_UPPER: begin
+            reg_dout <= dst_addr[63:32];
+        end
+        REG_MULT_LOWER: begin
+            reg_dout <= mult_result[31:0];
+        end
+        REG_MULT_UPPER: begin
+            reg_dout <= mult_result[63:32];
+        end
+        REG_NUM_DESC: begin
+            reg_dout <= reg_num_desc;
+        end
+        REG_MODULE_ID: begin
+            reg_dout <= MODULE_ID;
+        end
         default: begin
           reg_dout <= 32'hDEADBEEF;
         end
@@ -187,6 +223,9 @@ module qdma_subsystem_register (
                 end
                 REG_BYPASS_VALID: begin
                     reg_bypass_valid <= reg_din;
+                end
+                REG_NUM_DESC: begin
+                    reg_num_desc <= reg_din;
                 end
                 default: begin
 //                  reg_dout <= 32'hDEADBEEF;

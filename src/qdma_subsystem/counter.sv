@@ -1,5 +1,5 @@
 module counter #(
-    parameter WIDTH = 32,
+    parameter WIDTH = 32
 ) (
     input logic clk,
     input logic rst_n,

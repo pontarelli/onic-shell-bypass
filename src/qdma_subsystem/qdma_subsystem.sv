@@ -266,11 +266,15 @@ module qdma_subsystem #(
   wire         axil_aresetn;
   
   reg [63:0] qdma_c2h_pkt_addr;
-    reg  [2:0] qdma_c2h_port_id;
-    reg [10:0] qdma_c2h_qid;
-    reg  [7:0] qdma_c2h_func;
-    reg  [6:0] qdma_c2h_pfch_tag; 
-    reg        qdma_c2h_bypass_valid;
+  reg  [2:0] qdma_c2h_port_id;
+  reg [10:0] qdma_c2h_qid;
+  reg  [7:0] qdma_c2h_func;
+  reg  [6:0] qdma_c2h_pfch_tag; 
+  reg        qdma_c2h_bypass_valid;
+  wire [31:0] counter_packets_value;
+  wire [63:0] mult_result;
+  wire [31:0] reg_num_desc;
+
 
   // Reset is clocked by the 125MHz AXI-Lite clock
   generic_reset #(
@@ -313,12 +317,27 @@ module qdma_subsystem #(
   assign c2h_byp_out_rdy            = 1'b1;
 //  assign c2h_byp_in_st_csh_vld      = 1'b0;
   assign c2h_byp_in_st_csh_vld = qdma_c2h_bypass_valid && axis_qdma_c2h_tlast && axis_qdma_c2h_tvalid && axis_qdma_c2h_tready;
-  assign c2h_byp_in_st_csh_addr     = 0;
-  assign c2h_byp_in_st_csh_port_id  = 0;
-  assign c2h_byp_in_st_csh_qid      = 0;
+  assign mult_result = 32'h0940*counter_packets_value;
+  assign c2h_byp_in_st_csh_addr     = qdma_c2h_pkt_addr - mult_result;
+  assign c2h_byp_in_st_csh_port_id  = qdma_c2h_port_id;
+  assign c2h_byp_in_st_csh_qid      = qdma_c2h_qid;
   assign c2h_byp_in_st_csh_error    = 1'b0;
-  assign c2h_byp_in_st_csh_func     = 0;
-  assign c2h_byp_in_st_csh_pfch_tag = 0;
+  assign c2h_byp_in_st_csh_func     = qdma_c2h_func;
+  assign c2h_byp_in_st_csh_pfch_tag = qdma_c2h_pfch_tag;
+
+/*
+1. aggiungere contatore pacchetti modulo 1024 (o modulo num_descrittori. Controllare se num_descrittori meno 1)
+2. c2h_byp_in_st_csh_addr = qdma_c2h_pkt_addr -pkt_count*2368;
+*/
+
+counter cnt_pkt_desc_inst (
+    .clk(axis_aclk),
+    .rst_n(qdma_c2h_bypass_valid),
+    .enable(c2h_byp_in_st_csh_vld),
+    .max_value(reg_num_desc),
+    .count(counter_packets_value)
+);
+
 
   qdma_subsystem_qdma_wrapper #(
     .QDMA_ID (QDMA_ID)
@@ -425,22 +444,13 @@ module qdma_subsystem #(
     .c2h_byp_out_pfch_tag            (c2h_byp_out_pfch_tag),
     .c2h_byp_out_rdy                 (c2h_byp_out_rdy),
 
-    //.c2h_byp_in_st_csh_vld           (c2h_byp_in_st_csh_vld),
-    //.c2h_byp_in_st_csh_addr          (c2h_byp_in_st_csh_addr),
-    //.c2h_byp_in_st_csh_port_id       (c2h_byp_in_st_csh_port_id),
-    //.c2h_byp_in_st_csh_qid           (c2h_byp_in_st_csh_qid),
-    //.c2h_byp_in_st_csh_error         (c2h_byp_in_st_csh_error),
-    //.c2h_byp_in_st_csh_func          (c2h_byp_in_st_csh_func),
-    //.c2h_byp_in_st_csh_pfch_tag      (c2h_byp_in_st_csh_pfch_tag),
-    //.c2h_byp_in_st_csh_rdy           (c2h_byp_in_st_csh_rdy),
-
     .c2h_byp_in_st_csh_vld           (c2h_byp_in_st_csh_vld),
-    .c2h_byp_in_st_csh_addr          (qdma_c2h_pkt_addr),
-    .c2h_byp_in_st_csh_port_id       (qdma_c2h_port_id),
-    .c2h_byp_in_st_csh_qid           (qdma_c2h_qid),
+    .c2h_byp_in_st_csh_addr          (c2h_byp_in_st_csh_addr),
+    .c2h_byp_in_st_csh_port_id       (c2h_byp_in_st_csh_port_id),
+    .c2h_byp_in_st_csh_qid           (c2h_byp_in_st_csh_qid),
     .c2h_byp_in_st_csh_error         (c2h_byp_in_st_csh_error),
-    .c2h_byp_in_st_csh_func          (qdma_c2h_func),
-    .c2h_byp_in_st_csh_pfch_tag      (qdma_c2h_pfch_tag),
+    .c2h_byp_in_st_csh_func          (c2h_byp_in_st_csh_func),
+    .c2h_byp_in_st_csh_pfch_tag      (c2h_byp_in_st_csh_pfch_tag),
     .c2h_byp_in_st_csh_rdy           (c2h_byp_in_st_csh_rdy),
 
 
@@ -601,7 +611,6 @@ module qdma_subsystem #(
     assign m_axis_h2c_tuser_size = 0;
     assign m_axis_h2c_tuser_src  = 0;
     assign m_axis_h2c_tuser_dst  = 0;
-    assign m_axis_h2c_tuser_user = 0;
 
     assign s_axis_c2h_tready     = 1'b1;
   end
@@ -748,6 +757,10 @@ module qdma_subsystem #(
 //  output reg [7:0] reg_func,
 //  output reg [6:0] reg_pfch_tag,
 
+      .pkt_counter(counter_packets_value),
+      .dst_addr(c2h_byp_in_st_csh_addr),
+      .mult_result(mult_result),
+      .reg_num_desc(reg_num_desc),
       .reg_pkt_addr(qdma_c2h_pkt_addr),
       .reg_port_id(qdma_c2h_port_id),
       .reg_qid(qdma_c2h_qid),

@@ -320,7 +320,7 @@ module qdma_subsystem #(
   assign mult_result = 32'h0940*packet_counter_dist_ram_rdata; //2368*packet_counter
   assign c2h_byp_in_st_csh_addr     = external_dist_ram_rdata + mult_result;
   assign c2h_byp_in_st_csh_port_id  = qdma_c2h_port_id;
-  assign c2h_byp_in_st_csh_qid      = qdma_c2h_qid;
+  assign c2h_byp_in_st_csh_qid      = axis_qdma_c2h_ctrl_qid;
   assign c2h_byp_in_st_csh_error    = 1'b0;
   assign c2h_byp_in_st_csh_func     = qdma_c2h_func;
   assign c2h_byp_in_st_csh_pfch_tag = qdma_c2h_pfch_tag;

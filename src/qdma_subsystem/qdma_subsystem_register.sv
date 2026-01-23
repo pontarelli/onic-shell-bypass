@@ -60,11 +60,19 @@ module qdma_subsystem_register (
   output reg [7:0] reg_func,
   output reg [6:0] reg_pfch_tag,
   output reg       reg_bypass_valid,
+
+
+  //input             packet_counter_dist_ram_we,
+  //input     [31:0] packet_counter_dist_ram_addr,
+  //output    [31:0] packet_counter_dist_ram_rdata,
+  //input [31:0]  external_dist_ram_addr,
+  //output [31:0] external_dist_ram_rdata,
   
   
   input      [31:0] pkt_counter,
   input      [63:0] dst_addr,
   input      [63:0] mult_result,
+
 
   input         axil_aclk,
   input         axis_aclk,
@@ -72,6 +80,7 @@ module qdma_subsystem_register (
 );
 
   localparam C_ADDR_W = 12;
+  localparam DIST_RAM_ADDR_W = 20;
   localparam MODULE_ID = 32'hA9DBEA;
   
   localparam REG_ADDR_LOWER     = 12'h110;
@@ -87,8 +96,51 @@ module qdma_subsystem_register (
   localparam REG_MULT_LOWER     = 12'h138;
   localparam REG_MULT_UPPER     = 12'h13C;
   localparam REG_NUM_DESC       = 12'h140;
-
+  //localparam REG_MODULE_ID      = 12'h144;
+  // From this point onwards, registers are reserved accessing dist_ram
+  //localparam REG_DIST_RAM_BASE  = 12'h400;
+  // Last register to access indirect address for dist ram
+  //localparam REG_DIST_RAM_INDIR_ADDR = 12'hFFF;
   localparam REG_MODULE_ID      = 12'h400;
+
+
+  reg [31:0] dist_ram_indir_addr;
+
+
+  //wire [31:0] dist_ram_douta;
+  //wire [DIST_RAM_ADDR_W-1:0] dist_ram_addr;
+  //wire address_in_dist_ram_range;
+  //wire dist_ram_we;
+  //assign address_in_dist_ram_range = (s_axil_awaddr[C_ADDR_W-1:0] >= REG_DIST_RAM_BASE);
+  //assign dist_ram_we = s_axil_wvalid && s_axil_wready && address_in_dist_ram_range && (s_axil_awaddr[C_ADDR_W-1:0] != REG_DIST_RAM_BASE);
+  //assign dist_ram_addr = {dist_ram_indir_addr[(DIST_RAM_ADDR_W-C_ADDR_W)-1:0], s_axil_awaddr[C_ADDR_W-1:0]};
+
+  //dist_ram #(
+  //  .ADDR_WIDTH (DIST_RAM_ADDR_W),
+  //  .DATA_WIDTH (32)
+  //) base_addresses_memory (
+  //  .clk  (axil_aclk),
+  //  .we   (dist_ram_we),
+  //  .addra (dist_ram_addr),
+  //  .addrb (external_dist_ram_addr),
+  //  .din  (s_axil_wdata),
+  //  .douta (dist_ram_douta),
+  //  .doutb (external_dist_ram_rdata),
+  //);
+
+  //wire [31:0] packet_counter_dist_ram_rdata;
+  //dist_ram #(
+  //  .ADDR_WIDTH (12),
+  //  .DATA_WIDTH (32)
+  //) packet_counter_memory (
+  //  .clk  (axis_aclk),
+  //  .we   (packet_counter_dist_ram_we),
+  //  .addra (packet_counter_dist_ram_addr),
+  //  .addrb (32'b0),
+  //  .din  (packet_counter_dist_ram_rdata+32'd1),
+  //  .douta (packet_counter_dist_ram_rdata),
+  //  .doutb (),
+  //);
   
 //  reg  [31:0] reg_addr_lower;
 //  reg  [31:0] reg_addr_higher;
@@ -136,6 +188,8 @@ module qdma_subsystem_register (
     .reg_clk        (axil_aclk),
     .reg_rstn       (axil_aresetn)
   );
+
+
 
   always @(posedge axil_aclk) begin
     if (~axil_aresetn) begin
@@ -185,8 +239,16 @@ module qdma_subsystem_register (
         REG_MODULE_ID: begin
             reg_dout <= MODULE_ID;
         end
+        //REG_DIST_RAM_INDIR_ADDR: begin
+        //    reg_dout <= dist_ram_indir_addr;
+        //end
         default: begin
-          reg_dout <= 32'hDEADBEEF;
+            //if (address_in_dist_ram_range) begin
+            //    // Read from dist ram
+            //    reg_dout <= dist_ram_douta;
+            //end else begin
+                reg_dout <= 32'hDEADBEEF;
+            //end
         end
       endcase
     end
@@ -227,8 +289,10 @@ module qdma_subsystem_register (
                 REG_NUM_DESC: begin
                     reg_num_desc <= reg_din;
                 end
+                //REG_DIST_RAM_INDIR_ADDR: begin
+                //    dist_ram_indir_addr <= reg_din;
+                //end
                 default: begin
-//                  reg_dout <= 32'hDEADBEEF;
                 end
             endcase
         end
@@ -236,3 +300,4 @@ module qdma_subsystem_register (
   end
 
 endmodule: qdma_subsystem_register
+

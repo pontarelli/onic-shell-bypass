@@ -318,7 +318,7 @@ module qdma_subsystem #(
 //  assign c2h_byp_in_st_csh_vld      = 1'b0;
   assign c2h_byp_in_st_csh_vld = qdma_c2h_bypass_valid && axis_qdma_c2h_tlast && axis_qdma_c2h_tvalid && axis_qdma_c2h_tready;
   assign mult_result = 32'h0940*counter_packets_value;
-  assign c2h_byp_in_st_csh_addr     = qdma_c2h_pkt_addr - mult_result;
+  assign c2h_byp_in_st_csh_addr     = qdma_c2h_pkt_addr + mult_result;
   assign c2h_byp_in_st_csh_port_id  = qdma_c2h_port_id;
   assign c2h_byp_in_st_csh_qid      = qdma_c2h_qid;
   assign c2h_byp_in_st_csh_error    = 1'b0;
@@ -330,7 +330,9 @@ module qdma_subsystem #(
 2. c2h_byp_in_st_csh_addr = qdma_c2h_pkt_addr -pkt_count*2368;
 */
 
-counter cnt_pkt_desc_inst (
+ counter #(
+   .WIDTH(32)
+ ) cnt_pkt_desc_inst (
     .clk(axis_aclk),
     .rst_n(qdma_c2h_bypass_valid),
     .enable(c2h_byp_in_st_csh_vld),
@@ -670,6 +672,18 @@ counter cnt_pkt_desc_inst (
     wire                         c2h_status_valid;
     wire                  [15:0] c2h_status_bytes;
     wire                   [1:0] c2h_status_func_id;
+    //wire                         packet_counter_dist_ram_we;
+    //wire                  [31:0] packet_counter_dist_ram_addr;
+    //wire                  [31:0] packet_counter_dist_ram_rdata;
+    //wire                  [31:0] external_dist_ram_addr;
+    //wire                  [31:0] external_dist_ram_rdata;
+
+
+    // Address is the QID zero-extended to 32 bits
+    //assign packet_counter_dist_ram_addr = {22'b0, axis_qdma_c2h_ctrl_qid};
+    // I use the QID as the page number, using same offset 0x400 for all queues
+    //assign external_dist_ram_addr = { 10'b0 , axis_qdma_c2h_ctrl_qid, 12'h400};
+
 
     qdma_subsystem_address_map #(
       .NUM_PHYS_FUNC (NUM_PHYS_FUNC)
@@ -757,6 +771,11 @@ counter cnt_pkt_desc_inst (
 //  output reg [7:0] reg_func,
 //  output reg [6:0] reg_pfch_tag,
 
+      //.packet_counter_dist_ram_we(packet_counter_dist_ram_we),
+      //.packet_counter_dist_ram_addr(packet_counter_dist_ram_addr),
+      //.packet_counter_dist_ram_rdata(packet_counter_dist_ram_rdata),
+      //.external_dist_ram_addr(external_dist_ram_addr),
+      //.external_dist_ram_rdata(external_dist_ram_rdata),
       .pkt_counter(counter_packets_value),
       .dst_addr(c2h_byp_in_st_csh_addr),
       .mult_result(mult_result),

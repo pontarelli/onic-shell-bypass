@@ -330,29 +330,13 @@ module qdma_subsystem #(
     end
   end
   
-  assign mult_result = 32'h0940*qid_packet_counter; //2368*packet_counter
+  assign mult_result = 32'h0940*(qid_packet_counter & (reg_num_desc-1)) ; //2368*( packet_counter % reg_num_desc)
   assign c2h_byp_in_st_csh_addr     = qdma_c2h_pkt_addr + mult_result;
   assign c2h_byp_in_st_csh_port_id  = qdma_c2h_port_id;
   assign c2h_byp_in_st_csh_qid      = axis_qdma_c2h_ctrl_qid;
   assign c2h_byp_in_st_csh_error    = 1'b0;
   assign c2h_byp_in_st_csh_func     = qdma_c2h_func;
   assign c2h_byp_in_st_csh_pfch_tag = qdma_c2h_pfch_tag;
-
-/*
-1. aggiungere contatore pacchetti modulo 1024 (o modulo num_descrittori. Controllare se num_descrittori meno 1)
-2. c2h_byp_in_st_csh_addr = qdma_c2h_pkt_addr -pkt_count*2368;
-*/
-
-/*
- counter #(
-   .WIDTH(32)
- ) cnt_pkt_desc_inst (
-    .clk(axis_aclk),
-    .rst_n(qdma_c2h_bypass_enable),
-    .enable(c2h_byp_in_st_csh_vld),
-    .max_value(reg_num_desc),
-    .count(counter_packets_value)
-);*/
 
 
   qdma_subsystem_qdma_wrapper #(

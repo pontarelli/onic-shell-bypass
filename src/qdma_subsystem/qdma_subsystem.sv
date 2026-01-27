@@ -254,7 +254,7 @@ module qdma_subsystem #(
   wire   [6:0] c2h_byp_out_pfch_tag;
   wire         c2h_byp_out_rdy;
 
-  wire         c2h_byp_in_st_csh_vld;
+  reg         c2h_byp_in_st_csh_vld;
   wire  [63:0] c2h_byp_in_st_csh_addr;
   wire   [2:0] c2h_byp_in_st_csh_port_id;
   wire  [10:0] c2h_byp_in_st_csh_qid;
@@ -270,11 +270,11 @@ module qdma_subsystem #(
   reg [10:0] qdma_c2h_qid;
   reg  [7:0] qdma_c2h_func;
   reg  [6:0] qdma_c2h_pfch_tag; 
-  reg        qdma_c2h_bypass_valid;
+  wire        qdma_c2h_bypass_enable;
   wire [31:0] counter_packets_value;
   wire [63:0] mult_result;
   wire [31:0] reg_num_desc;
-
+  wire                  [31:0] qid_packet_counter;
 
   // Reset is clocked by the 125MHz AXI-Lite clock
   generic_reset #(
@@ -314,11 +314,24 @@ module qdma_subsystem #(
   assign h2c_byp_in_st_cidx         = 0;
   assign h2c_byp_in_st_no_dma       = 1'b0;
 
+
+
   assign c2h_byp_out_rdy            = 1'b1;
-//  assign c2h_byp_in_st_csh_vld      = 1'b0;
-  assign c2h_byp_in_st_csh_vld = qdma_c2h_bypass_valid && axis_qdma_c2h_tlast && axis_qdma_c2h_tvalid && axis_qdma_c2h_tready;
-  assign mult_result = 32'h0940*packet_counter_dist_ram_rdata; //2368*packet_counter
-  assign c2h_byp_in_st_csh_addr     = external_dist_ram_rdata + mult_result;
+  //  assign c2h_byp_in_st_csh_vld      = 1'b0;
+  //assign c2h_byp_in_st_csh_vld = qdma_c2h_bypass_enable && axis_qdma_c2h_tlast && axis_qdma_c2h_tvalid && c2h_byp_in_st_csh_rdy;
+  //assign c2h_byp_in_st_csh_vld = qdma_c2h_bypass_enable && axis_qdma_c2h_tlast && axis_qdma_c2h_tvalid && axis_qdma_c2h_tready;
+  
+  always@(posedge axis_aclk) begin
+    if (~axil_aresetn) begin
+      c2h_byp_in_st_csh_vld <= 1'b0;
+    end
+    else begin
+      c2h_byp_in_st_csh_vld = qdma_c2h_bypass_enable && axis_qdma_c2h_tlast && axis_qdma_c2h_tvalid && axis_qdma_c2h_tready;
+    end
+  end
+  
+  assign mult_result = 32'h0940*qid_packet_counter; //2368*packet_counter
+  assign c2h_byp_in_st_csh_addr     = qdma_c2h_pkt_addr + mult_result;
   assign c2h_byp_in_st_csh_port_id  = qdma_c2h_port_id;
   assign c2h_byp_in_st_csh_qid      = axis_qdma_c2h_ctrl_qid;
   assign c2h_byp_in_st_csh_error    = 1'b0;
@@ -330,15 +343,16 @@ module qdma_subsystem #(
 2. c2h_byp_in_st_csh_addr = qdma_c2h_pkt_addr -pkt_count*2368;
 */
 
+/*
  counter #(
    .WIDTH(32)
  ) cnt_pkt_desc_inst (
     .clk(axis_aclk),
-    .rst_n(qdma_c2h_bypass_valid),
+    .rst_n(qdma_c2h_bypass_enable),
     .enable(c2h_byp_in_st_csh_vld),
     .max_value(reg_num_desc),
     .count(counter_packets_value)
-);
+);*/
 
 
   qdma_subsystem_qdma_wrapper #(
@@ -672,18 +686,10 @@ module qdma_subsystem #(
     wire                         c2h_status_valid;
     wire                  [15:0] c2h_status_bytes;
     wire                   [1:0] c2h_status_func_id;
-    wire                         packet_counter_dist_ram_we;
-    wire                  [31:0] packet_counter_dist_ram_addr;
-    wire                  [31:0] packet_counter_dist_ram_rdata;
-    wire                  [31:0] external_dist_ram_addr;
-    wire                  [31:0] external_dist_ram_rdata;
-
-
-    // Address is the QID zero-extended to 32 bits
-    assign packet_counter_dist_ram_addr = {22'b0, axis_qdma_c2h_ctrl_qid};
-    // I use the QID as the page number, using same offset 0x400 for all queues
-    assign external_dist_ram_addr = { 10'b0 , axis_qdma_c2h_ctrl_qid, 12'h400};
-    assign packet_counter_dist_ram_we = axis_qdma_c2h_tvalid && axis_qdma_c2h_tready && axis_qdma_c2h_tlast;
+    wire                         packet_counter_ram_we;
+    
+    
+    assign packet_counter_ram_we = axis_qdma_c2h_tvalid && axis_qdma_c2h_tready && axis_qdma_c2h_tlast;
 
 
     qdma_subsystem_address_map #(
@@ -771,22 +777,22 @@ module qdma_subsystem #(
 //  output reg [10:0] reg_qid,
 //  output reg [7:0] reg_func,
 //  output reg [6:0] reg_pfch_tag,
-
-      .packet_counter_dist_ram_we(packet_counter_dist_ram_we),
-      .packet_counter_dist_ram_addr(packet_counter_dist_ram_addr),
-      .packet_counter_dist_ram_rdata(packet_counter_dist_ram_rdata),
-      .external_dist_ram_addr(external_dist_ram_addr),
-      .external_dist_ram_rdata(external_dist_ram_rdata),
-      .pkt_counter(counter_packets_value),
+      .external_qid(axis_qdma_c2h_ctrl_qid),
+      .qid_data({qdma_c2h_bypass_enable,qdma_c2h_pfch_tag,reg_num_desc,qdma_c2h_pkt_addr}),
+      .packet_counter_ram_we(packet_counter_ram_we),
+      .qid_packet_counter(qid_packet_counter),
+      
+      .pkt_counter(32'b0), //counter_packets_value),
       .dst_addr(c2h_byp_in_st_csh_addr),
       .mult_result(mult_result),
-      .reg_num_desc(reg_num_desc),
-      .reg_pkt_addr(qdma_c2h_pkt_addr),
+      //.reg_pkt_addr(qdma_c2h_pkt_addr),
+      //.reg_num_desc(reg_num_desc),
       .reg_port_id(qdma_c2h_port_id),
-      .reg_qid(qdma_c2h_qid),
+      //.reg_qid(qdma_c2h_qid),
       .reg_func(qdma_c2h_func),
-      .reg_pfch_tag(qdma_c2h_pfch_tag),
-      .reg_bypass_valid(qdma_c2h_bypass_valid),
+      //.reg_pfch_tag(qdma_c2h_pfch_tag),
+      //.reg_bypass_valid(qdma_c2h_bypass_enable),
+      
       .axil_aclk      (axil_cfg_aclk),
       .axis_aclk      (axis_aclk),
       .axil_aresetn   (axil_aresetn)

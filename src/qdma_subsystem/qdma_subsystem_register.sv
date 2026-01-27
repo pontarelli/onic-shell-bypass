@@ -59,14 +59,14 @@ module qdma_subsystem_register (
   output reg [10:0] reg_qid,
   output reg [7:0] reg_func,
   output reg [6:0] reg_pfch_tag,
-  output reg       reg_bypass_valid,
+  output reg       reg_bypass_enable,
 
 
-  input             packet_counter_dist_ram_we,
-  input     [31:0] packet_counter_dist_ram_addr,
-  output    [31:0] packet_counter_dist_ram_rdata,
-  input [31:0]  external_dist_ram_addr,
-  output [31:0] external_dist_ram_rdata,
+  input     [10:0] external_qid,
+  output   [127:0] qid_data,
+  
+  input            packet_counter_ram_we,
+  output    [31:0] qid_packet_counter,
   
   
   input      [31:0] pkt_counter,
@@ -80,7 +80,7 @@ module qdma_subsystem_register (
 );
 
   localparam C_ADDR_W = 12;
-  localparam DIST_RAM_ADDR_W = 20;
+  localparam DIST_RAM_ADDR_W = 15;
   localparam MODULE_ID = 32'hA9DBEA;
   
   localparam REG_ADDR_LOWER     = 12'h110;
@@ -89,7 +89,7 @@ module qdma_subsystem_register (
   localparam REG_QID            = 12'h11C;
   localparam REG_FUNC           = 12'h120;
   localparam REG_PFCH_TAG       = 12'h124;
-  localparam REG_BYPASS_VALID   = 12'h128;
+  localparam REG_BYPASS_ENABLE  = 12'h128;
   localparam REG_PKT_COUNTER    = 12'h12C;
   localparam REG_DST_ADDR_LOWER = 12'h130;
   localparam REG_DST_ADDR_UPPER = 12'h134;
@@ -98,47 +98,42 @@ module qdma_subsystem_register (
   localparam REG_NUM_DESC       = 12'h140;
   localparam REG_MODULE_ID      = 12'h144;
   // From this point onwards, registers are reserved accessing dist_ram
-  localparam REG_DIST_RAM_BASE  = 12'h400;
+  localparam REG_RAM_BASE  = 12'h400;
   // Last register to access indirect address for dist ram
-  localparam REG_DIST_RAM_INDIR_ADDR = 12'hFFF;
+  localparam REG_RAM_INDIR_ADDR = 12'hFFF;
 
 
-  reg [31:0] dist_ram_indir_addr;
+  reg [31:0] qid_ram_addr;
+  reg [31:0] reg_addr;
 
 
-  wire [31:0] dist_ram_douta;
-  wire [DIST_RAM_ADDR_W-1:0] dist_ram_addr;
-  wire address_in_dist_ram_range;
-  wire dist_ram_we;
-  assign address_in_dist_ram_range = (s_axil_awaddr[C_ADDR_W-1:0] >= REG_DIST_RAM_BASE);
-  assign dist_ram_we = s_axil_wvalid && s_axil_wready && address_in_dist_ram_range && (s_axil_awaddr[C_ADDR_W-1:0] != REG_DIST_RAM_BASE);
-  assign dist_ram_addr = {dist_ram_indir_addr[(DIST_RAM_ADDR_W-C_ADDR_W)-1:0], s_axil_awaddr[C_ADDR_W-1:0]};
+  wire [31:0] ram_douta;
+  wire [DIST_RAM_ADDR_W-1:0] ram_addr;
+  wire address_in_ram_range;
+  wire ram_we;
+  assign address_in_ram_range = (reg_addr[C_ADDR_W-1:0] >= REG_RAM_BASE);
+  assign ram_we = reg_we && address_in_ram_range && (reg_addr[C_ADDR_W-1:0] != REG_RAM_BASE);
+  assign ram_addr = {qid_ram_addr[10:0], reg_addr[3:0]};
 
-  dist_ram #(
-    .ADDR_WIDTH (DIST_RAM_ADDR_W),
-    .DATA_WIDTH (32)
-  ) base_addresses_memory (
+  qid_ram qid_ram_inst (
     .clk  (axil_aclk),
-    .we   (dist_ram_we),
-    .addra (dist_ram_addr),
-    .addrb (external_dist_ram_addr),
-    .din  (s_axil_wdata),
-    .douta (dist_ram_douta),
-    .doutb (external_dist_ram_rdata),
+    .we   (ram_we),
+    .addra (ram_addr),
+    .din  (reg_din),
+    .douta (ram_douta),
+    .addrb (external_qid),
+    .doutb (qid_data)
   );
 
-  wire [31:0] packet_counter_dist_ram_rdata;
-  dist_ram #(
-    .ADDR_WIDTH (12),
+  wire [31:0] packet_counter_ram_rdata;
+  qid_packet_counter #(
+    .ADDR_WIDTH (11),
     .DATA_WIDTH (32)
-  ) packet_counter_memory (
+  ) qid_packet_counter_inst (
     .clk  (axis_aclk),
-    .we   (packet_counter_dist_ram_we),
-    .addra (packet_counter_dist_ram_addr),
-    .addrb (32'b0),
-    .din  (packet_counter_dist_ram_rdata+32'd1),
-    .douta (packet_counter_dist_ram_rdata),
-    .doutb (),
+    .we   (packet_counter_ram_we),
+    .addr (external_qid),
+    .dout (qid_packet_counter)
   );
   
 //  reg  [31:0] reg_addr_lower;
@@ -153,6 +148,7 @@ module qdma_subsystem_register (
   wire [C_ADDR_W-1:0] reg_addr;
   wire         [31:0] reg_din;
   reg          [31:0] reg_dout;
+  wire         [31:0] register_dout;
 
   axi_lite_register #(
     .CLOCKING_MODE ("common_clock"),
@@ -180,7 +176,7 @@ module qdma_subsystem_register (
     .reg_we         (reg_we),
     .reg_addr       (reg_addr),
     .reg_din        (reg_din),
-    .reg_dout       (reg_dout),
+    .reg_dout       (register_dout),
 
     .axil_aclk      (axil_aclk),
     .axil_aresetn   (axil_aresetn),
@@ -188,7 +184,7 @@ module qdma_subsystem_register (
     .reg_rstn       (axil_aresetn)
   );
 
-
+assign register_dout = (address_in_ram_range && (reg_addr[C_ADDR_W-1:0] != REG_RAM_BASE)) ? ram_douta: reg_dout;
 
   always @(posedge axil_aclk) begin
     if (~axil_aresetn) begin
@@ -214,8 +210,8 @@ module qdma_subsystem_register (
         REG_PFCH_TAG: begin
             reg_dout <= reg_pfch_tag;
         end
-        REG_BYPASS_VALID: begin
-            reg_dout <= reg_bypass_valid;
+        REG_BYPASS_ENABLE: begin
+            reg_dout <= reg_bypass_enable;
         end
         REG_PKT_COUNTER: begin
             reg_dout <= pkt_counter;
@@ -238,17 +234,12 @@ module qdma_subsystem_register (
         REG_MODULE_ID: begin
             reg_dout <= MODULE_ID;
         end
-        REG_DIST_RAM_INDIR_ADDR: begin
-            reg_dout <= dist_ram_indir_addr;
+        REG_RAM_INDIR_ADDR: begin
+            reg_dout <= qid_ram_addr;
         end
         default: begin
-            if (address_in_dist_ram_range) begin
-                // Read from dist ram
-                reg_dout <= dist_ram_douta;
-            end else begin
                 reg_dout <= 32'hDEADBEEF;
             end
-        end
       endcase
     end
   end
@@ -260,7 +251,7 @@ module qdma_subsystem_register (
         reg_qid <= 0;     
         reg_func <= 0;    
         reg_pfch_tag <= 0;
-        reg_bypass_valid <= 0;
+        reg_bypass_enable <= 0;
     end else begin
         if (reg_en && reg_we) begin
             case (reg_addr)
@@ -282,14 +273,14 @@ module qdma_subsystem_register (
                 REG_PFCH_TAG: begin
                     reg_pfch_tag <= reg_din;
                 end
-                REG_BYPASS_VALID: begin
-                    reg_bypass_valid <= reg_din;
+                REG_BYPASS_ENABLE: begin
+                    reg_bypass_enable <= reg_din;
                 end
                 REG_NUM_DESC: begin
                     reg_num_desc <= reg_din;
                 end
-                REG_DIST_RAM_INDIR_ADDR: begin
-                    dist_ram_indir_addr <= reg_din;
+                REG_RAM_INDIR_ADDR: begin
+                    qid_ram_addr <= reg_din;
                 end
                 default: begin
                 end

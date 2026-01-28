@@ -119,8 +119,6 @@ module qdma_subsystem_register (
 
 
   reg [31:0] qid_page_index;
-  reg [31:0] reg_addr;
-
 
   wire [31:0] qid_ram_douta;
   wire [14:0] qid_ram_addr;
@@ -177,6 +175,7 @@ module qdma_subsystem_register (
     .ADDR_WIDTH (11),
     .DATA_WIDTH (32)
   ) qid_packet_counter_inst (
+    .rstn  (axil_aresetn), 
     .clka  (axil_aclk),
     .wea   (packet_counter_ram_we),
     .addra (packet_counter_ram_addr),

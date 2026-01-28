@@ -2,7 +2,7 @@ module qid_packet_counter #(
     parameter ADDR_WIDTH = 11,
     parameter DATA_WIDTH = 32
   ) 
-(rst,clka,clkb, wea,web,addra,addrb,din,douta,doutb);
+(rstn,clka,clkb, wea,web,addra,addrb,din,douta,doutb);
     
     input [ADDR_WIDTH-1:0] addra;
     input clka;
@@ -11,7 +11,7 @@ module qid_packet_counter #(
     output reg [DATA_WIDTH-1:0] douta;
     
     input clkb;
-    input rst;
+    input rstn;
     input web;
     input [ADDR_WIDTH-1:0] addrb;
     output reg [DATA_WIDTH-1:0] doutb;
@@ -26,8 +26,11 @@ module qid_packet_counter #(
     end
     
     always @(posedge clka) begin
-        if (wea)
-            clear = din[0];    
+        if (~rstn)
+            clear = 0;
+        else 
+            if (wea)
+                clear = din[0];    
     end
     
     always @(posedge clkb) begin

@@ -762,9 +762,9 @@ module qdma_subsystem #(
 //  output reg [7:0] reg_func,
 //  output reg [6:0] reg_pfch_tag,
       .external_qid(axis_qdma_c2h_ctrl_qid),
-      .qid_data({qdma_c2h_bypass_enable,qdma_c2h_pfch_tag,reg_num_desc,qdma_c2h_pkt_addr}),
-      .packet_counter_ram_we(packet_counter_ram_we),
-      .qid_packet_counter(qid_packet_counter),
+      .external_qid_data({qdma_c2h_bypass_enable,qdma_c2h_pfch_tag,reg_num_desc,qdma_c2h_pkt_addr}),
+      .external_packet_counter_ram_we(packet_counter_ram_we),
+      .external_packet_counter_data(qid_packet_counter),
       
       .pkt_counter(32'b0), //counter_packets_value),
       .dst_addr(c2h_byp_in_st_csh_addr),

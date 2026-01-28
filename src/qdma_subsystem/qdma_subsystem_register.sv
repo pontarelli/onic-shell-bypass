@@ -22,18 +22,34 @@
 // -----------------------------------------------------------------------------
 //  Address | Mode |          Description
 // -----------------------------------------------------------------------------
-//   0x4000 |  RO  | TX packets from QDMA
-//   0x4004 |      |
+//   0x4110 |  RW  |  REG_ADDR_LOWER
+//   0x4114 |  RW  |  REG_ADDR_UPPER
+//   0x4118 |  RW  |  REG_PORT_ID
+//   0x411C |  RW  |  REG_QID
+//   0x4120 |  RW  |  REG_FUNC
+//   0x4124 |  RW  |  REG_PFCH_TAG
+//   0x4128 |  RW  |  REG_BYPASS_ENABLE
+//   0x412C |  RO  |  REG_PKT_COUNTER
+//   0x4130 |  RO  |  REG_DST_ADDR_LOWER
+//   0x4134 |  RO  |  REG_DST_ADDR_UPPER
+//   0x4138 |  RO  |  REG_MULT_LOWER
+//   0x413C |  RO  |  REG_MULT_UPPER
+//   0x4140 |  RW  |  REG_NUM_DESC
+//   0x4144 |  RO  |  REG_MODULE_ID
 // -----------------------------------------------------------------------------
-//   0x4008 |  RO  | TX bytes from QDMA
-//   0x400C |      |
+//  Address | Mode |          Description
+// 0x4400 - 0x44FE |  RW  | BRAM to hold per QID data - Each QID has 16 words (256B) of space:  
+//     00 -     07 |  RW  | qdma_c2h_pkt_addr
+//     08 -     0B |  RW  | reg_num_desc
+//     0C -     0F |  RW  | {qdma_c2h_bypass_enable,qdma_c2h_pfch_tag}
+//     10 -     13 |  RW  | qid_packet_counter
+//     14 -     FF |   -  | RESERVED
+// 0x4FF0          |  RW  | REG_RAM_INDIR_ADDR (QID)
 // -----------------------------------------------------------------------------
-//   0x4100 |  RO  | RX packets into QDMA
-//   0x4104 |      |
-// -----------------------------------------------------------------------------
-//   0x4108 |  RO  | RX bytes into QDMA
-//   0x410C |      |
-// -----------------------------------------------------------------------------
+
+
+
+
 `timescale 1ns/1ps
 module qdma_subsystem_register (
   input         s_axil_awvalid,
@@ -63,10 +79,10 @@ module qdma_subsystem_register (
 
 
   input     [10:0] external_qid,
-  output   [127:0] qid_data,
+  output   [127:0] external_qid_data,
   
-  input            packet_counter_ram_we,
-  output    [31:0] qid_packet_counter,
+  input            external_packet_counter_ram_we,
+  output    [31:0] external_packet_counter_data,
   
   
   input      [31:0] pkt_counter,
@@ -80,7 +96,6 @@ module qdma_subsystem_register (
 );
 
   localparam C_ADDR_W = 12;
-  localparam DIST_RAM_ADDR_W = 15;
   localparam MODULE_ID = 32'hA9DBEA;
   
   localparam REG_ADDR_LOWER     = 12'h110;
@@ -97,43 +112,80 @@ module qdma_subsystem_register (
   localparam REG_MULT_UPPER     = 12'h13C;
   localparam REG_NUM_DESC       = 12'h140;
   localparam REG_MODULE_ID      = 12'h144;
-  // From this point onwards, registers are reserved accessing dist_ram
+  // From this point onwards, registers are reserved accessing bram
   localparam REG_RAM_BASE  = 12'h400;
   // Last register to access indirect address for dist ram
-  localparam REG_RAM_INDIR_ADDR = 12'hFFF;
+  localparam REG_RAM_INDIR_ADDR = 12'hFF0;
 
 
-  reg [31:0] qid_ram_addr;
+  reg [31:0] qid_page_index;
   reg [31:0] reg_addr;
 
 
-  wire [31:0] ram_douta;
-  wire [DIST_RAM_ADDR_W-1:0] ram_addr;
-  wire address_in_ram_range;
-  wire ram_we;
-  assign address_in_ram_range = (reg_addr[C_ADDR_W-1:0] >= REG_RAM_BASE);
-  assign ram_we = reg_we && address_in_ram_range && (reg_addr[C_ADDR_W-1:0] != REG_RAM_BASE);
-  assign ram_addr = {qid_ram_addr[10:0], reg_addr[3:0]};
+  wire [31:0] qid_ram_douta;
+  wire [14:0] qid_ram_addr;
+  wire [10:0] packet_counter_ram_addr;
+  wire [31:0] packet_counter_ram_douta;
 
+  wire address_in_qid_ram_range;
+  wire address_in_packet_counter_ram_range;
+  wire qid_ram_we;
+  
+  wire                reg_en;
+  wire                reg_we;
+  wire [C_ADDR_W-1:0] reg_addr;
+  wire         [31:0] reg_din;
+  reg          [31:0] reg_dout;
+  wire         [31:0] register_dout;
+  wire [31:0] packet_counter_ram_rdata;
+
+  
+  // Check if the input address is in the range of the "queue" ram or "packet counter" ram 
+  assign address_in_qid_ram_range = (reg_addr[C_ADDR_W-1:0] >= 12'h0x400 && reg_addr[C_ADDR_W-1:0] < 12'h0x410);
+  assign address_in_packet_counter_ram_range = (reg_addr[C_ADDR_W-1:0] >= 12'h0x410 && reg_addr[C_ADDR_W-1:0] < 12'h0x414);
+
+  // Enable write if address in range && register write enable is set
+  assign qid_ram_we = reg_we && address_in_qid_ram_range;
+  assign packet_counter_ram_we = reg_we && address_in_packet_counter_ram_range;
+  // For qid ram, address is qid + last 4 bits of reg addr (16 bytes)
+  assign qid_ram_addr = {qid_page_index[10:0], reg_addr[3:0]};
+  // For packet counter ram, we have just one entry per queue -> address is only qid
+  assign packet_counter_ram_addr = qid_page_index[10:0]; 
+
+
+  // If address is in one of the rams' ranges, assign register_dout to rams' value
+  // else, use register file output
+  assign register_dout = address_in_qid_ram_range ? qid_ram_douta :
+                        address_in_packet_counter_ram_range ? packet_counter_ram_douta :  
+                        reg_dout;
+  // Port A R/W for AXI-Lite usage, Port B RO for external read
   qid_ram qid_ram_inst (
-    .clk  (axil_aclk),
-    .we   (ram_we),
-    .addra (ram_addr),
+    .clka  (axil_aclk),
+    .we   (qid_ram_we),
+    .addra (qid_ram_addr),
     .din  (reg_din),
-    .douta (ram_douta),
+    .douta (qid_ram_douta),
+    .clkb  (axis_aclk),
     .addrb (external_qid),
-    .doutb (qid_data)
+    .doutb (external_qid_data)
   );
 
-  wire [31:0] packet_counter_ram_rdata;
+  // Both port A and B R/W
+  // Port A for AXI-Lite usage (counters reset)
+  // Port B for external usage (counter increase)
   qid_packet_counter #(
     .ADDR_WIDTH (11),
     .DATA_WIDTH (32)
   ) qid_packet_counter_inst (
-    .clk  (axis_aclk),
-    .we   (packet_counter_ram_we),
-    .addr (external_qid),
-    .dout (qid_packet_counter)
+    .clka  (axil_aclk),
+    .wea   (packet_counter_ram_we),
+    .addra (packet_counter_ram_addr),
+    .din   (reg_din),
+    .douta (packet_counter_ram_douta),
+    .clkb  (axis_aclk),
+    .web   (external_packet_counter_ram_we),
+    .addrb (external_qid),
+    .doutb (external_packet_counter_data)
   );
   
 //  reg  [31:0] reg_addr_lower;
@@ -143,12 +195,7 @@ module qdma_subsystem_register (
 //  reg   [7:0] reg_func;
 //  reg   [6:0] reg_pfch_tag;
 
-  wire                reg_en;
-  wire                reg_we;
-  wire [C_ADDR_W-1:0] reg_addr;
-  wire         [31:0] reg_din;
-  reg          [31:0] reg_dout;
-  wire         [31:0] register_dout;
+
 
   axi_lite_register #(
     .CLOCKING_MODE ("common_clock"),
@@ -184,7 +231,7 @@ module qdma_subsystem_register (
     .reg_rstn       (axil_aresetn)
   );
 
-assign register_dout = (address_in_ram_range && (reg_addr[C_ADDR_W-1:0] != REG_RAM_BASE)) ? ram_douta: reg_dout;
+
 
   always @(posedge axil_aclk) begin
     if (~axil_aresetn) begin
@@ -235,7 +282,7 @@ assign register_dout = (address_in_ram_range && (reg_addr[C_ADDR_W-1:0] != REG_R
             reg_dout <= MODULE_ID;
         end
         REG_RAM_INDIR_ADDR: begin
-            reg_dout <= qid_ram_addr;
+            reg_dout <= qid_page_index;
         end
         default: begin
                 reg_dout <= 32'hDEADBEEF;
@@ -280,7 +327,7 @@ assign register_dout = (address_in_ram_range && (reg_addr[C_ADDR_W-1:0] != REG_R
                     reg_num_desc <= reg_din;
                 end
                 REG_RAM_INDIR_ADDR: begin
-                    qid_ram_addr <= reg_din;
+                    qid_page_index <= reg_din;
                 end
                 default: begin
                 end

@@ -34,7 +34,7 @@ module qid_packet_counter #(
     end
     
     always @(posedge clkb) begin
-        if (rst)
+        if (~rstn)
             internal_counter = 0;
         else
             internal_counter = internal_counter +1;                 

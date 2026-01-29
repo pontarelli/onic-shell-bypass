@@ -21,7 +21,6 @@ proc _do_impl {jobs {strategies ""}} {
         wait_on_run impl_1
     } else {
         set impl_runs "impl_1"
-        #set_property STRATEGY "Flow_RuntimeOptimized" [get_runs synth_1]
         set_property STRATEGY "[lindex $strategies 0]" [get_runs impl_1]
         for {set i 1} {$i < [llength $strategies]} {incr i 1} {
             set r impl_[expr $i + 1]
@@ -443,10 +442,13 @@ if {$sim} {
     launch_simulation -scripts_only
 }
 
+# Set synthesis strategy to Flow_PerfOptimized_high
+#set_property STRATEGY Flow_PerfOptimized_high [get_runs synth_1]
+
 # Implement design
 if {$impl} {
     update_compile_order -fileset sources_1
-    _do_impl $jobs {"Performance_ExtraTimingOpt"}
+    _do_impl $jobs {"Performance_Explore"}
 }
 
 if {$post_impl} {

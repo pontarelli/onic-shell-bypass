@@ -36,6 +36,7 @@
 //   0x413C |  RO  |  REG_MULT_UPPER
 //   0x4140 |  RW  |  REG_NUM_DESC
 //   0x4144 |  RO  |  REG_MODULE_ID
+//   0x4148 |  RO  |  REG_DEBUG
 // -----------------------------------------------------------------------------
 //  Address | Mode |          Description
 // 0x4400 - 0x44FE |  RW  | BRAM to hold per QID data - Each QID has 16 words (256B) of space:  
@@ -76,6 +77,7 @@ module qdma_subsystem_register (
   output reg [7:0] reg_func,
   output reg [6:0] reg_pfch_tag,
   output reg       reg_bypass_enable,
+  output reg       reg_debug,
 
 
   input     [10:0] external_qid,
@@ -112,6 +114,7 @@ module qdma_subsystem_register (
   localparam REG_MULT_UPPER     = 12'h13C;
   localparam REG_NUM_DESC       = 12'h140;
   localparam REG_MODULE_ID      = 12'h144;
+  localparam REG_DEBUG          = 12'h148;
   // From this point onwards, registers are reserved accessing bram
   localparam REG_RAM_BASE  = 12'h400;
   // Last register to access indirect address for dist ram
@@ -139,8 +142,8 @@ module qdma_subsystem_register (
 
   
   // Check if the input address is in the range of the "queue" ram or "packet counter" ram 
-  assign address_in_qid_ram_range = (reg_addr[C_ADDR_W-1:0] >= 12'h0x400 && reg_addr[C_ADDR_W-1:0] < 12'h0x410);
-  assign address_in_packet_counter_ram_range = (reg_addr[C_ADDR_W-1:0] >= 12'h0x410 && reg_addr[C_ADDR_W-1:0] < 12'h0x414);
+  assign address_in_qid_ram_range = (reg_addr[C_ADDR_W-1:0] >= 12'h400 && reg_addr[C_ADDR_W-1:0] < 12'h410);
+  assign address_in_packet_counter_ram_range = (reg_addr[C_ADDR_W-1:0] >= 12'h410 && reg_addr[C_ADDR_W-1:0] < 12'h414);
 
   // Enable write if address in range && register write enable is set
   assign qid_ram_we = reg_we && address_in_qid_ram_range;
@@ -262,12 +265,6 @@ module qdma_subsystem_register (
         REG_PKT_COUNTER: begin
             reg_dout <= pkt_counter;
         end
-        REG_ADDR_LOWER: begin
-            reg_dout <= dst_addr[31:0];
-        end
-        REG_ADDR_UPPER: begin
-            reg_dout <= dst_addr[63:32];
-        end
         REG_MULT_LOWER: begin
             reg_dout <= mult_result[31:0];
         end
@@ -279,6 +276,9 @@ module qdma_subsystem_register (
         end
         REG_MODULE_ID: begin
             reg_dout <= MODULE_ID;
+        end
+        REG_DEBUG: begin
+            reg_dout <= reg_debug;
         end
         REG_RAM_INDIR_ADDR: begin
             reg_dout <= qid_page_index;
@@ -298,6 +298,7 @@ module qdma_subsystem_register (
         reg_func <= 0;    
         reg_pfch_tag <= 0;
         reg_bypass_enable <= 0;
+        reg_debug <= 0;
     end else begin
         if (reg_en && reg_we) begin
             case (reg_addr)
@@ -324,6 +325,9 @@ module qdma_subsystem_register (
                 end
                 REG_NUM_DESC: begin
                     reg_num_desc <= reg_din;
+                end
+                REG_DEBUG: begin
+                    reg_debug <= reg_din;
                 end
                 REG_RAM_INDIR_ADDR: begin
                     qid_page_index <= reg_din;

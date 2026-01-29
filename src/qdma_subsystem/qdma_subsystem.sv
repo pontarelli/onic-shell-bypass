@@ -265,17 +265,19 @@ module qdma_subsystem #(
 
   wire         axil_aresetn;
   
-  reg [63:0] qdma_c2h_pkt_addr;
-  reg  [2:0] qdma_c2h_port_id;
-  reg [10:0] qdma_c2h_qid;
-  reg  [7:0] qdma_c2h_func;
-  reg  [6:0] qdma_c2h_pfch_tag; 
+  reg [63:0]  qdma_c2h_pkt_addr;
+  reg  [2:0]  qdma_c2h_port_id;
+  reg [10:0]  qdma_c2h_qid;
+  reg  [7:0]  qdma_c2h_func;
+  reg  [6:0]  qdma_c2h_pfch_tag; 
   wire        qdma_c2h_bypass_enable;
   wire [31:0] counter_packets_value;
   wire [63:0] mult_result;
   wire [31:0] reg_num_desc;
-  wire                  [31:0] qid_packet_counter;
-
+  wire        [31:0] qid_packet_counter;
+  wire [511:0] debug_tdata;
+  wire debug;
+  
   // Reset is clocked by the 125MHz AXI-Lite clock
   generic_reset #(
     .NUM_INPUT_CLK  (1),
@@ -330,6 +332,8 @@ module qdma_subsystem #(
     end
   end
   
+  ////47B (pad)+ 17B
+  assign debug_tdata = (debug)? {axis_qdma_c2h_tdata[511:136],7'b0,qdma_c2h_bypass_enable,7'b0,c2h_byp_in_st_csh_vld,1'b0,c2h_byp_in_st_csh_pfch_tag,5'b0, c2h_byp_in_st_csh_qid,reg_num_desc, c2h_byp_in_st_csh_addr} : axis_qdma_c2h_tdata;
   assign mult_result = 32'h0940*(qid_packet_counter & (reg_num_desc-1)) ; //2368*( packet_counter % reg_num_desc)
   assign c2h_byp_in_st_csh_addr     = qdma_c2h_pkt_addr + mult_result;
   assign c2h_byp_in_st_csh_port_id  = qdma_c2h_port_id;
@@ -377,7 +381,8 @@ module qdma_subsystem #(
     .m_axis_h2c_tready               (axis_qdma_h2c_tready),
 
     .s_axis_c2h_tvalid               (axis_qdma_c2h_tvalid),
-    .s_axis_c2h_tdata                (axis_qdma_c2h_tdata),
+    //.s_axis_c2h_tdata                (axis_qdma_c2h_tdata),
+    .s_axis_c2h_tdata                (debug_tdata),
     .s_axis_c2h_tcrc                 (axis_qdma_c2h_tcrc),
     .s_axis_c2h_tlast                (axis_qdma_c2h_tlast),
     .s_axis_c2h_ctrl_marker          (axis_qdma_c2h_ctrl_marker),
@@ -772,6 +777,7 @@ module qdma_subsystem #(
       //.reg_pkt_addr(qdma_c2h_pkt_addr),
       //.reg_num_desc(reg_num_desc),
       .reg_port_id(qdma_c2h_port_id),
+      .reg_debug(debug),
       //.reg_qid(qdma_c2h_qid),
       .reg_func(qdma_c2h_func),
       //.reg_pfch_tag(qdma_c2h_pfch_tag),

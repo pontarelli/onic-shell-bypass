@@ -331,6 +331,8 @@ module qdma_subsystem #(
       c2h_byp_in_st_csh_vld = qdma_c2h_bypass_enable && axis_qdma_c2h_tlast && axis_qdma_c2h_tvalid && axis_qdma_c2h_tready;
     end
   end
+    
+  assign packet_counter_ram_we = c2h_byp_in_st_csh_vld; //axis_qdma_c2h_tlast && axis_qdma_c2h_tvalid && axis_qdma_c2h_tready;
   
   ////47B (pad)+ 17B
   assign debug_tdata = (debug)? {axis_qdma_c2h_tdata[511:136],7'b0,qdma_c2h_bypass_enable,7'b0,c2h_byp_in_st_csh_vld,1'b0,c2h_byp_in_st_csh_pfch_tag,5'b0, c2h_byp_in_st_csh_qid,reg_num_desc, c2h_byp_in_st_csh_addr} : axis_qdma_c2h_tdata;
@@ -678,7 +680,6 @@ module qdma_subsystem #(
     wire                         packet_counter_ram_we;
     
     
-    assign packet_counter_ram_we = axis_qdma_c2h_tvalid && axis_qdma_c2h_tready && axis_qdma_c2h_tlast;
 
 
     qdma_subsystem_address_map #(

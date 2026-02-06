@@ -200,4 +200,4 @@ module box_250mhz_address_map #(
     .aresetn       (aresetn)
   );
 
-endmodule: box_250mhz_address_map
+endmodule

@@ -37,6 +37,7 @@
 //   0x4140 |  RW  |  REG_NUM_DESC
 //   0x4144 |  RO  |  REG_MODULE_ID
 //   0x4148 |  RO  |  REG_DEBUG
+//   0x414C |  RO  |  REG_BYPASS_VALID_ZEROED_COUNTER
 // -----------------------------------------------------------------------------
 //  Address | Mode |          Description
 // 0x4400 - 0x44FE |  RW  | BRAM to hold per QID data - Each QID has 16 words (256B) of space:  
@@ -70,6 +71,14 @@ module qdma_subsystem_register (
   output  [1:0] s_axil_rresp,
   input         s_axil_rready,
 
+  input     [10:0] external_qid,
+  output   [127:0] external_qid_data,
+  
+  input            external_packet_counter_ram_we,
+  output    [31:0] external_packet_counter_data,
+  
+  
+  
   output reg [63:0] reg_pkt_addr,
   output reg [31:0] reg_num_desc,
   output reg  [2:0] reg_port_id,
@@ -79,15 +88,9 @@ module qdma_subsystem_register (
   output reg       reg_bypass_enable,
   output reg       reg_debug,
 
-
-  input     [10:0] external_qid,
-  output   [127:0] external_qid_data,
-  
-  input            external_packet_counter_ram_we,
-  output    [31:0] external_packet_counter_data,
-  
   
   input      [31:0] pkt_counter,
+  input      [31:0] bypass_ready_zeroed_counter,
   input      [63:0] dst_addr,
   input      [63:0] mult_result,
 
@@ -115,6 +118,7 @@ module qdma_subsystem_register (
   localparam REG_NUM_DESC       = 12'h140;
   localparam REG_MODULE_ID      = 12'h144;
   localparam REG_DEBUG          = 12'h148;
+  localparam REG_BYPASS_READY_ZEROED_COUNTER = 12'h14C;
   // From this point onwards, registers are reserved accessing bram
   localparam REG_RAM_BASE  = 12'h400;
   // Last register to access indirect address for dist ram
@@ -205,7 +209,7 @@ module qdma_subsystem_register (
     .DATA_W        (32)
   ) axil_reg_inst (
     .s_axil_awvalid (s_axil_awvalid),
-    .s_axil_awaddr  (s_axil_awaddr),
+    .s_axil_awaddr  (s_axil_awaddr[11:0]),
     .s_axil_awready (s_axil_awready),
     .s_axil_wvalid  (s_axil_wvalid),
     .s_axil_wdata   (s_axil_wdata),
@@ -214,7 +218,7 @@ module qdma_subsystem_register (
     .s_axil_bresp   (s_axil_bresp),
     .s_axil_bready  (s_axil_bready),
     .s_axil_arvalid (s_axil_arvalid),
-    .s_axil_araddr  (s_axil_araddr),
+    .s_axil_araddr  (s_axil_araddr[11:0]),
     .s_axil_arready (s_axil_arready),
     .s_axil_rvalid  (s_axil_rvalid),
     .s_axil_rdata   (s_axil_rdata),
@@ -282,6 +286,9 @@ module qdma_subsystem_register (
         end
         REG_RAM_INDIR_ADDR: begin
             reg_dout <= qid_page_index;
+        end
+        REG_BYPASS_READY_ZEROED_COUNTER: begin
+            reg_dout <= bypass_ready_zeroed_counter;
         end
         default: begin
                 reg_dout <= 32'hDEADBEEF;

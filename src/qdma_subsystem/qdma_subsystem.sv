@@ -271,13 +271,17 @@ module qdma_subsystem #(
   reg  [7:0]  qdma_c2h_func;
   reg  [6:0]  qdma_c2h_pfch_tag; 
   wire        qdma_c2h_bypass_enable;
-  wire [31:0] counter_packets_value;
+  reg [31:0] counter_packets_value;
   wire [63:0] mult_result;
   wire [31:0] reg_num_desc;
   wire        [31:0] qid_packet_counter;
   wire [511:0] debug_tdata;
   wire debug;
   
+  wire       packet_counter_ram_we;
+  reg [10:0] packet_counter_addr;
+
+
   // Reset is clocked by the 125MHz AXI-Lite clock
   generic_reset #(
     .NUM_INPUT_CLK  (1),
@@ -323,19 +327,80 @@ module qdma_subsystem #(
   //assign c2h_byp_in_st_csh_vld = qdma_c2h_bypass_enable && axis_qdma_c2h_tlast && axis_qdma_c2h_tvalid && c2h_byp_in_st_csh_rdy;
   //assign c2h_byp_in_st_csh_vld = qdma_c2h_bypass_enable && axis_qdma_c2h_tlast && axis_qdma_c2h_tvalid && axis_qdma_c2h_tready;
   
+  reg [31:0] bypass_valid_zeroed_counter;
+  
   always@(posedge axis_aclk) begin
     if (~axil_aresetn) begin
       c2h_byp_in_st_csh_vld <= 1'b0;
+      packet_counter_addr <= 0;
+      counter_packets_value <= 0;
+      qdma_c2h_port_id <= 0;
+      bypass_valid_zeroed_counter <= 0;
     end
     else begin
+      packet_counter_addr = axis_qdma_c2h_ctrl_qid;
       c2h_byp_in_st_csh_vld = qdma_c2h_bypass_enable && axis_qdma_c2h_tlast && axis_qdma_c2h_tvalid && axis_qdma_c2h_tready;
+      counter_packets_value = counter_packets_value +c2h_byp_in_st_csh_vld;
+      qdma_c2h_port_id <= axis_qdma_c2h_ctrl_port_id;
+      if (!c2h_byp_in_st_csh_vld) 
+        bypass_valid_zeroed_counter <= bypass_valid_zeroed_counter + 1;
     end
   end
     
   assign packet_counter_ram_we = c2h_byp_in_st_csh_vld; //axis_qdma_c2h_tlast && axis_qdma_c2h_tvalid && axis_qdma_c2h_tready;
   
-  ////47B (pad)+ 17B
-  assign debug_tdata = (debug)? {axis_qdma_c2h_tdata[511:136],7'b0,qdma_c2h_bypass_enable,7'b0,c2h_byp_in_st_csh_vld,1'b0,c2h_byp_in_st_csh_pfch_tag,5'b0, c2h_byp_in_st_csh_qid,reg_num_desc, c2h_byp_in_st_csh_addr} : axis_qdma_c2h_tdata;
+  /* 
+  assign packet_counter_ram_we = qdma_c2h_bypass_enable && axis_qdma_c2h_tlast && axis_qdma_c2h_tvalid && axis_qdma_c2h_tready;
+  assign byp_in_fifo_wr_en = qdma_c2h_bypass_enable && axis_qdma_c2h_tlast && axis_qdma_c2h_tvalid && axis_qdma_c2h_tready;
+  assign byp_in_fifo_din = {qdma_c2h_pkt_addr + mult_result, qdma_c2h_port_id, axis_qdma_c2h_ctrl_qid, qdma_c2h_func, qdma_c2h_pfch_tag};
+  assign byp_in_fifo_rd_en = c2h_byp_in_st_csh_rdy && c2h_byp_in_st_csh_vld;
+  assign c2h_byp_in_st_csh_vld <= ~byp_in_fifo_empty;
+
+  xpm_fifo_sync #(
+    .DOUT_RESET_VALUE    ("0"),
+    .ECC_MODE            ("no_ecc"),
+    .FIFO_MEMORY_TYPE    ("auto"),
+    .FIFO_WRITE_DEPTH    (32),
+    .READ_DATA_WIDTH     (),
+    .READ_MODE           ("fwft"),
+    .WRITE_DATA_WIDTH    ()
+  ) byp_in_fifo_inst (
+    .wr_en         (byp_in_fifo_wr_en),
+    .din           (byp_in_fifo_din),
+    .wr_ack        (),
+    .rd_en         (byp_in_fifo_rd_en),
+    .data_valid    (),
+    .dout          (c2h_byp_in_st_csh_addr, c2h_byp_in_st_csh_port_id, c2h_byp_in_st_csh_qid, c2h_byp_in_st_csh_func, c2h_byp_in_st_csh_pfch_tag),
+
+    .wr_data_count (),
+    .rd_data_count (),
+
+    .empty         (byp_in_fifo_empty),
+    //.full          (byp_in_fifo_full),
+    .almost_empty  (),
+    .almost_full   (),
+    .overflow      (),
+    .underflow     (),
+    .prog_empty    (),
+    .prog_full     (),
+    .sleep         (1'b0),
+
+    .sbiterr       (),
+    .dbiterr       (),
+    .injectsbiterr (1'b0),
+    .injectdbiterr (1'b0),
+
+    .wr_clk        (axis_aclk),
+    .rst           (~axil_aresetn),
+    .rd_rst_busy   (),
+    .wr_rst_busy   ()
+  );
+
+  */
+  
+
+  ////47B (pad)+ 17B     // counter_packets_value,qid_packet_counter, 3'b0,c2h_byp_in_st_csh_rdy,3'b0,qdma_c2h_bypass_enable
+  assign debug_tdata = (debug)? {axis_qdma_c2h_tdata[511:168], qid_packet_counter,7'b0,qdma_c2h_bypass_enable,7'b0,c2h_byp_in_st_csh_vld,1'b0,c2h_byp_in_st_csh_pfch_tag,5'b0, c2h_byp_in_st_csh_qid,reg_num_desc, c2h_byp_in_st_csh_addr} : axis_qdma_c2h_tdata;
   assign mult_result = 32'h0940*(qid_packet_counter & (reg_num_desc-1)) ; //2368*( packet_counter % reg_num_desc)
   assign c2h_byp_in_st_csh_addr     = qdma_c2h_pkt_addr + mult_result;
   assign c2h_byp_in_st_csh_port_id  = qdma_c2h_port_id;
@@ -677,7 +742,7 @@ module qdma_subsystem #(
     wire                         c2h_status_valid;
     wire                  [15:0] c2h_status_bytes;
     wire                   [1:0] c2h_status_func_id;
-    wire                         packet_counter_ram_we;
+    
     
     
 
@@ -762,27 +827,24 @@ module qdma_subsystem #(
       .s_axil_rresp   (axil_rresp),
       .s_axil_rready  (axil_rready),
       
-//      output reg [63:0] reg_pkt_addr,
-//  output reg  [2:0] reg_port_id,
-//  output reg [10:0] reg_qid,
-//  output reg [7:0] reg_func,
-//  output reg [6:0] reg_pfch_tag,
-      .external_qid(axis_qdma_c2h_ctrl_qid),
-      .external_qid_data({qdma_c2h_bypass_enable,qdma_c2h_pfch_tag,reg_num_desc,qdma_c2h_pkt_addr}),
+      //.reg_pkt_addr(qdma_c2h_pkt_addr),
+      //.reg_num_desc(reg_num_desc),
+      //.reg_port_id(qdma_c2h_port_id),
+      //.reg_qid(qdma_c2h_qid),
+      //.reg_func(qdma_c2h_func),
+      //.reg_pfch_tag(qdma_c2h_pfch_tag),
+      //.reg_bypass_valid(qdma_c2h_bypass_enable),
+      .reg_debug(debug),
+      
+      .external_qid(packet_counter_addr),
+      .external_qid_data({ 24'b0, qdma_c2h_bypass_enable,qdma_c2h_pfch_tag,reg_num_desc,qdma_c2h_pkt_addr}),
       .external_packet_counter_ram_we(packet_counter_ram_we),
       .external_packet_counter_data(qid_packet_counter),
       
-      .pkt_counter(32'b0), //counter_packets_value),
+      .pkt_counter(counter_packets_value),
       .dst_addr(c2h_byp_in_st_csh_addr),
       .mult_result(mult_result),
-      //.reg_pkt_addr(qdma_c2h_pkt_addr),
-      //.reg_num_desc(reg_num_desc),
-      .reg_port_id(qdma_c2h_port_id),
-      .reg_debug(debug),
-      //.reg_qid(qdma_c2h_qid),
-      .reg_func(qdma_c2h_func),
-      //.reg_pfch_tag(qdma_c2h_pfch_tag),
-      //.reg_bypass_valid(qdma_c2h_bypass_enable),
+      
       
       .axil_aclk      (axil_cfg_aclk),
       .axis_aclk      (axis_aclk),

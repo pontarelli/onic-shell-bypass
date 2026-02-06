@@ -515,7 +515,7 @@ module system_config #(
      .s_axi_aclk      (aclk[0]),                    
      .s_axi_aresetn   (aresetn),                    
  
-     .s_axi_awaddr    (axil_smon_awaddr),                    
+     .s_axi_awaddr    (axil_smon_awaddr[12:0]),                    
      .s_axi_awvalid   (axil_smon_awvalid),                    
      .s_axi_awready   (axil_smon_awready),                    
      .s_axi_wdata     (axil_smon_wdata),                    
@@ -525,7 +525,7 @@ module system_config #(
      .s_axi_bresp     (axil_smon_bresp),                    
      .s_axi_bvalid    (axil_smon_bvalid),                    
      .s_axi_bready    (axil_smon_bready),                    
-     .s_axi_araddr    (axil_smon_araddr),                    
+     .s_axi_araddr    (axil_smon_araddr[12:0]),                    
      .s_axi_arvalid   (axil_smon_arvalid),                    
      .s_axi_arready   (axil_smon_arready),                    
      .s_axi_rdata     (axil_smon_rdata),                    

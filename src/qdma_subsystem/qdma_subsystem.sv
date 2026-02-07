@@ -372,7 +372,7 @@ module qdma_subsystem #(
     .FIFO_WRITE_DEPTH    (32),
     .READ_DATA_WIDTH     (93),
     .READ_MODE           ("fwft"),
-    .WRITE_DATA_WIDTH    ()
+    .WRITE_DATA_WIDTH    (93)
   ) byp_in_fifo_inst (
     .wr_en         (byp_in_fifo_wr_en),
     .din           (byp_in_fifo_din),

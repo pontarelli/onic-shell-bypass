@@ -360,7 +360,8 @@ module qdma_subsystem #(
   
   
   assign packet_counter_ram_we = qdma_c2h_bypass_enable && axis_qdma_c2h_tlast && axis_qdma_c2h_tvalid && axis_qdma_c2h_tready;
-  assign byp_in_fifo_wr_en = packet_counter_ram_we; 
+  assign byp_in_fifo_wr_en = packet_counter_ram_we;
+  //to check: axis_qdma_c2h_ctrl_qid is one cc before the other signals 
   assign byp_in_fifo_din = {qdma_c2h_pkt_addr + mult_result, qdma_c2h_port_id, axis_qdma_c2h_ctrl_qid, qdma_c2h_func, qdma_c2h_pfch_tag};
   assign byp_in_fifo_rd_en = c2h_byp_in_st_csh_rdy && c2h_byp_in_st_csh_vld;
   assign c2h_byp_in_st_csh_vld = ~byp_in_fifo_empty;
@@ -409,7 +410,7 @@ module qdma_subsystem #(
   
 
   ////43B (pad)+ 4B +3B +2B + 4B +8B       // counter_packets_value, 
-  assign debug_tdata = (debug)? {axis_qdma_c2h_tdata[511:168], qid_packet_counter,3'b0,c2h_byp_in_st_csh_rdy,3'b0,qdma_c2h_bypass_enable,7'b0,c2h_byp_in_st_csh_vld,1'b0,c2h_byp_in_st_csh_pfch_tag,5'b0, c2h_byp_in_st_csh_qid,reg_num_desc, c2h_byp_in_st_csh_addr} : axis_qdma_c2h_tdata;
+  assign debug_tdata = (debug)? {axis_qdma_c2h_tdata[511:168], qid_packet_counter,3'b0,packet_counter_ram_we,3'b0,qdma_c2h_bypass_enable,8'b0,1'b0,qdma_c2h_pfch_tag,5'b0, axis_qdma_c2h_ctrl_qid,reg_num_desc, qdma_c2h_pkt_addr + mult_result} : axis_qdma_c2h_tdata;
   assign mult_result = 32'h0940*(qid_packet_counter & (reg_num_desc-1)) ; //2368*( packet_counter % reg_num_desc)
   assign c2h_byp_in_st_csh_error    = 1'b0;
   //assign c2h_byp_in_st_csh_addr     = qdma_c2h_pkt_addr + mult_result;
@@ -845,7 +846,7 @@ module qdma_subsystem #(
       //.reg_bypass_valid(qdma_c2h_bypass_enable),
       .reg_debug(debug),
       
-      .external_qid(packet_counter_addr),
+      .external_qid(axis_qdma_c2h_ctrl_qid),
       .external_qid_data({ 24'b0, qdma_c2h_bypass_enable,qdma_c2h_pfch_tag,reg_num_desc,qdma_c2h_pkt_addr}),
       .external_packet_counter_ram_we(packet_counter_ram_we),
       .external_packet_counter_data(qid_packet_counter),

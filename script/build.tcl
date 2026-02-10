@@ -69,6 +69,7 @@ set src_dir ${root_dir}/src
 #   tag                    Tag to identify the build
 #   overwrite              Overwrite existing build results
 #   rebuild                Update build directory but respect overwrite
+#   resynth                Resynth main project 
 #   jobs                   Number of jobs for synthesis and implementation
 #   synth_ip               Synthesize IPs before creating design project
 #   impl                   Run implementation after creating design project
@@ -98,6 +99,7 @@ array set build_options {
     -board       au250
     -tag         ""
     -overwrite   0
+    -resynth     0
     -rebuild     0
     -jobs        8
     -synth_ip    1
@@ -323,7 +325,7 @@ close_project
 # Setup build directory for the design
 set top_build_dir ${build_dir}/${top}
 
-if {[file exists $top_build_dir] && !$overwrite} {
+if {[file exists $top_build_dir] && (!$overwrite || !$resynth) } {
     puts "INFO: \[$top\] Use existing build (overwrite=0)"
     return
 }

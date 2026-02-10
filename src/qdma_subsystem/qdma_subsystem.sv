@@ -280,7 +280,8 @@ module qdma_subsystem #(
   
   wire       packet_counter_ram_we;
   reg [10:0] packet_counter_addr;
-  wire byp_in_fifo_wr_en, byp_in_fifo_rd_en,byp_in_fifo_empty;
+  wire  byp_in_fifo_rd_en,byp_in_fifo_empty;
+  reg byp_in_fifo_wr_en;
   wire [92:0] byp_in_fifo_din;
 
   // Reset is clocked by the 125MHz AXI-Lite clock
@@ -342,12 +343,13 @@ module qdma_subsystem #(
     end
   end
   
-  /*
+  
+  reg [10:0] qid;
+  reg [2:0] pid;
+  
   assign qdma_c2h_func=8'b0;
   
   assign packet_counter_ram_we = qdma_c2h_bypass_enable && axis_qdma_c2h_tlast && axis_qdma_c2h_tvalid && axis_qdma_c2h_tready;
-  reg [10:0] qid;
-  reg [2:0] pid;
   always@(posedge axis_aclk) begin
     if (~axil_aresetn) begin
       byp_in_fifo_wr_en = 1'b0;
@@ -361,13 +363,8 @@ module qdma_subsystem #(
     end
   end
   assign byp_in_fifo_din = {qdma_c2h_pkt_addr + mult_result, pid, qid, qdma_c2h_func, qdma_c2h_pfch_tag};
-  */  
+  //assign byp_in_fifo_wr_en = packet_counter_ram_we;
   
-  
-  assign packet_counter_ram_we = qdma_c2h_bypass_enable && axis_qdma_c2h_tlast && axis_qdma_c2h_tvalid && axis_qdma_c2h_tready;
-  assign byp_in_fifo_wr_en = packet_counter_ram_we;
-  //to check: axis_qdma_c2h_ctrl_qid is one cc before the other signals 
-  assign byp_in_fifo_din = {qdma_c2h_pkt_addr + mult_result, qdma_c2h_port_id, axis_qdma_c2h_ctrl_qid, qdma_c2h_func, qdma_c2h_pfch_tag};
   assign byp_in_fifo_rd_en = c2h_byp_in_st_csh_rdy && c2h_byp_in_st_csh_vld;
   assign c2h_byp_in_st_csh_vld = ~byp_in_fifo_empty;
 

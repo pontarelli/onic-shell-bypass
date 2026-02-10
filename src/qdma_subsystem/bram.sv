@@ -14,7 +14,7 @@ module qid_packet_counter #(
     input rstn;
     input web;
     input [ADDR_WIDTH-1:0] addrb;
-    output [DATA_WIDTH-1:0] doutb;
+    output reg [DATA_WIDTH-1:0] doutb;
     wire [ADDR_WIDTH-1:0] addr;
     reg [DATA_WIDTH-1:0] ram [0:(1<<ADDR_WIDTH)-1];
     reg clear;
@@ -43,11 +43,11 @@ module qid_packet_counter #(
     assign addr= (clear) ? internal_counter : addrb; 
     
     always @(posedge clkb) begin
+        doutb = ram[addr]; //Read first
         if (web | clear)
             ram[addr] = (clear)? 0 : ram[addr] + 1;
     end
 
-    assign     doutb = ram[addr]; //Read first
     
 
 endmodule
@@ -68,10 +68,10 @@ module qid_ram
     reg [31:0] ram2 [0:(1<<11)-1];
     reg [31:0] ram1 [0:(1<<11)-1];
     reg [31:0] ram0 [0:(1<<11)-1];
-    wire [31:0] doutb3;
-    wire [31:0] doutb2;
-    wire [31:0] doutb1;
-    wire [31:0] doutb0;
+    reg [31:0] doutb3;
+    reg [31:0] doutb2;
+    reg [31:0] doutb1;
+    reg [31:0] doutb0;
     reg [31:0] douta3;
     reg [31:0] douta2;
     reg [31:0] douta1;
@@ -81,10 +81,14 @@ module qid_ram
     //always @(posedge clkb)
     assign doutb = {doutb3,doutb2,doutb1,doutb0};
         
-    assign doutb3=ram3[addrb];
-    assign doutb2=ram2[addrb];
-    assign doutb1=ram1[addrb];
-    assign doutb0=ram0[addrb];
+    always @(posedge clkb) 
+         doutb3=ram3[addrb];
+    always @(posedge clkb) 
+         doutb2=ram2[addrb];
+    always @(posedge clkb) 
+         doutb1=ram1[addrb];
+    always @(posedge clkb) 
+         doutb0=ram0[addrb];
     
     assign we3 = (addra[3:2] == 2'b11)? we: 0;
     assign we2 = (addra[3:2] == 2'b10)? we: 0;

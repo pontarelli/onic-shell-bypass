@@ -268,8 +268,8 @@ module qdma_subsystem #(
   reg [63:0]  qdma_c2h_pkt_addr;
   reg  [2:0]  qdma_c2h_port_id;
   reg [10:0]  qdma_c2h_qid;
-  reg  [7:0]  qdma_c2h_func;
-  reg  [6:0]  qdma_c2h_pfch_tag; 
+  wire  [7:0]  qdma_c2h_func;
+  wire  [6:0]  qdma_c2h_pfch_tag; 
   wire        qdma_c2h_bypass_enable;
   reg [31:0] counter_packets_value;
   wire [63:0] mult_result;
@@ -343,20 +343,25 @@ module qdma_subsystem #(
   end
   
   /*
+  assign qdma_c2h_func=8'b0;
+  
+  assign packet_counter_ram_we = qdma_c2h_bypass_enable && axis_qdma_c2h_tlast && axis_qdma_c2h_tvalid && axis_qdma_c2h_tready;
+  reg [10:0] qid;
+  reg [2:0] pid;
   always@(posedge axis_aclk) begin
     if (~axil_aresetn) begin
-      c2h_byp_in_st_csh_vld <= 1'b0;
-      packet_counter_addr <= 0;
-      qdma_c2h_port_id <= 0;
+      byp_in_fifo_wr_en = 1'b0;
+      qid = 11'b0;
+      pid = 3'b0;
     end
     else begin
-      packet_counter_addr = axis_qdma_c2h_ctrl_qid;
-      c2h_byp_in_st_csh_vld = qdma_c2h_bypass_enable && axis_qdma_c2h_tlast && axis_qdma_c2h_tvalid && axis_qdma_c2h_tready;
-      qdma_c2h_port_id <= axis_qdma_c2h_ctrl_port_id;
+      qid = axis_qdma_c2h_ctrl_qid;
+      pid = axis_qdma_c2h_ctrl_port_id;
+      byp_in_fifo_wr_en = packet_counter_ram_we;
     end
   end
+  assign byp_in_fifo_din = {qdma_c2h_pkt_addr + mult_result, pid, qid, qdma_c2h_func, qdma_c2h_pfch_tag};
   */  
-  //assign packet_counter_ram_we = c2h_byp_in_st_csh_vld; //axis_qdma_c2h_tlast && axis_qdma_c2h_tvalid && axis_qdma_c2h_tready;
   
   
   assign packet_counter_ram_we = qdma_c2h_bypass_enable && axis_qdma_c2h_tlast && axis_qdma_c2h_tvalid && axis_qdma_c2h_tready;

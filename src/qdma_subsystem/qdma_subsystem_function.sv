@@ -336,7 +336,7 @@ module qdma_subsystem_function #(
     else if (hash_result_valid) begin
       qid_fifo_wr_en <= 1'b1;
       //qid_fifo_din   <= indir_table[`getvec(16, hash_result[6:0])] + q_base;
-      qid_fifo_din   <= (((16'b1 << indir_table[15:0]) - 16'b1) & hash_result[10:0]) + q_base;
+      qid_fifo_din   <= (indir_table[10:0] & hash_result[10:0]) + q_base;
     end
     else begin
       qid_fifo_wr_en <= 1'b0;

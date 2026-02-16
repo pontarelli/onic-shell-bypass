@@ -31,7 +31,7 @@ au55n-2:
 	@echo -e '$(OK_COLOR)[*] Created bitstream onic_au55n_cmac2.bit $(NO_COLOR)'
 
 au280:
-	cd script; vivado -mode batch -source build.tcl -tclargs -build_timestamp $(COMMIT_HASH) -board au280 -resynth -num_phys_func 1 -num_cmac_port 1 -jobs 16 -tag cmac1
+	cd script; vivado -mode batch -source build.tcl -tclargs -build_timestamp $(COMMIT_HASH) -board au280 -resynth 1 -num_phys_func 1 -num_cmac_port 1 -jobs 16 -tag cmac1
 	@cp ./build/au280_cmac1/open_nic_shell/open_nic_shell.runs/impl_1/open_nic_shell.bit onic_au280_cmac1.bit
 	@cp ./build/au280_cmac1/open_nic_shell/open_nic_shell.runs/impl_1/open_nic_shell.mcs onic_au280_cmac1.mcs
 	@echo -e '$(OK_COLOR)[*] Created bitstream onic_au280_cmac1.bit $(NO_COLOR)'

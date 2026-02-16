@@ -330,7 +330,7 @@ close_project
 # Setup build directory for the design
 set top_build_dir ${build_dir}/${top}
 
-if {[file exists $top_build_dir] && (!$overwrite || !$resynth) } {
+if {[file exists $top_build_dir] && (!$overwrite && !$resynth) } {
     puts "INFO: \[$top\] Use existing build (overwrite=0)"
     return
 }

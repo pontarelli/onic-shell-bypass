@@ -133,6 +133,7 @@ module qdma_subsystem_qdma_wrapper #(
   input    [6:0] c2h_byp_in_st_csh_pfch_tag,
   output         c2h_byp_in_st_csh_rdy,
 
+  input          fence, 
   input          pcie_refclk,
   input          pcie_refclk_gt,
   input          pcie_rstn,
@@ -285,7 +286,7 @@ module qdma_subsystem_qdma_wrapper #(
   assign dsc_crdt_in_crdt  = 0;
   assign dsc_crdt_in_qid   = 0;
   assign dsc_crdt_in_dir   = 1'b0;
-  assign dsc_crdt_in_fence = 1'b0;
+  assign dsc_crdt_in_fence = fence; //1'b0;
 
   generate if (QDMA_ID == 0) begin
     qdma_no_sriov qdma_inst (

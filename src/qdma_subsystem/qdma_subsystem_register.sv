@@ -36,8 +36,10 @@
 //   0x413C |  RO  |  REG_MULT_UPPER
 //   0x4140 |  RW  |  REG_NUM_DESC
 //   0x4144 |  RO  |  REG_MODULE_ID
-//   0x4148 |  RO  |  REG_DEBUG
-//   0x414C |  RO  |  REG_BYPASS_VALID_ZEROED_COUNTER
+//   0x4148 |  RW  |  REG_DEBUG
+//   0x414C |  RW  |  REG_BYPASS_VALID_ZEROED_COUNTER
+//   0x4150 |  RW  |  REG_QMASK
+//   0x4154 |  RW  |  REG_FENCE
 // -----------------------------------------------------------------------------
 //  Address | Mode |          Description
 // 0x4400 - 0x44FE |  RW  | BRAM to hold per QID data - Each QID has 16 words (256B) of space:  
@@ -83,10 +85,12 @@ module qdma_subsystem_register (
   output reg [31:0] reg_num_desc,
   output reg  [2:0] reg_port_id,
   output reg [10:0] reg_qid,
-  output reg [7:0] reg_func,
-  output reg [6:0] reg_pfch_tag,
-  output reg       reg_bypass_enable,
-  output reg       reg_debug,
+  output reg [7:0]  reg_func,
+  output reg [6:0]  reg_pfch_tag,
+  output reg        reg_bypass_enable,
+  output reg        reg_debug,
+  output reg        reg_fence,
+  output reg [10:0] reg_qmask,
 
   
   input      [31:0] pkt_counter,
@@ -119,6 +123,8 @@ module qdma_subsystem_register (
   localparam REG_MODULE_ID      = 12'h144;
   localparam REG_DEBUG          = 12'h148;
   localparam REG_BYPASS_READY_ZEROED_COUNTER = 12'h14C;
+  localparam REG_QMASK          = 12'h150;
+  localparam REG_FENCE          = 12'h154;
   // From this point onwards, registers are reserved accessing bram
   localparam REG_RAM_BASE  = 12'h400;
   // Last register to access indirect address for dist ram
@@ -290,6 +296,12 @@ module qdma_subsystem_register (
         REG_BYPASS_READY_ZEROED_COUNTER: begin
             reg_dout <= bypass_ready_zeroed_counter;
         end
+        REG_QMASK: begin
+            reg_dout <= reg_qmask;
+        end
+        REG_FENCE: begin
+            reg_dout <= reg_fence;
+        end
         default: begin
                 reg_dout <= 32'hDEADBEEF;
             end
@@ -306,6 +318,8 @@ module qdma_subsystem_register (
         reg_pfch_tag <= 0;
         reg_bypass_enable <= 0;
         reg_debug <= 0;
+        reg_qmask <= 11'h7ff;
+        reg_fence <= 0;
     end else begin
         if (reg_en && reg_we) begin
             case (reg_addr)
@@ -338,6 +352,12 @@ module qdma_subsystem_register (
                 end
                 REG_RAM_INDIR_ADDR: begin
                     qid_page_index <= reg_din;
+                end
+                REG_QMASK: begin
+                    reg_qmask <= reg_din;
+                end
+                REG_FENCE: begin
+                    reg_fence <= reg_din;
                 end
                 default: begin
                 end

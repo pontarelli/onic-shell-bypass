@@ -277,6 +277,9 @@ module qdma_subsystem #(
   wire        [31:0] qid_packet_counter;
   wire [511:0] debug_tdata;
   wire debug;
+  wire [10:0] qmask;
+  wire [10:0] masked_qid;
+  wire fence;
   
   wire       packet_counter_ram_we;
   reg [10:0] packet_counter_addr;
@@ -357,11 +360,12 @@ module qdma_subsystem #(
       pid = 3'b0;
     end
     else begin
-      qid = axis_qdma_c2h_ctrl_qid;
+      qid = masked_qid;
       pid = axis_qdma_c2h_ctrl_port_id;
       byp_in_fifo_wr_en = packet_counter_ram_we;
     end
   end
+  assign masked_qid = axis_qdma_c2h_ctrl_qid & qmask;
   assign byp_in_fifo_din = {qdma_c2h_pkt_addr + mult_result, pid, qid, qdma_c2h_func, qdma_c2h_pfch_tag};
   //assign byp_in_fifo_wr_en = packet_counter_ram_we;
   
@@ -468,7 +472,8 @@ module qdma_subsystem #(
     .s_axis_c2h_ctrl_port_id         (axis_qdma_c2h_ctrl_port_id),
     .s_axis_c2h_ctrl_ecc             (axis_qdma_c2h_ctrl_ecc),
     .s_axis_c2h_ctrl_len             (axis_qdma_c2h_ctrl_len),
-    .s_axis_c2h_ctrl_qid             (axis_qdma_c2h_ctrl_qid),
+    //.s_axis_c2h_ctrl_qid             (axis_qdma_c2h_ctrl_qid),
+    .s_axis_c2h_ctrl_qid             (masked_qid),
     .s_axis_c2h_ctrl_has_cmpt        (axis_qdma_c2h_ctrl_has_cmpt),
     .s_axis_c2h_mty                  (axis_qdma_c2h_mty),
     .s_axis_c2h_tready               (axis_qdma_c2h_tready),
@@ -537,7 +542,7 @@ module qdma_subsystem #(
     .c2h_byp_in_st_csh_pfch_tag      (c2h_byp_in_st_csh_pfch_tag),
     .c2h_byp_in_st_csh_rdy           (c2h_byp_in_st_csh_rdy),
 
-
+    .fence                           (fence),
     .pcie_refclk                     (pcie_refclk),
     .pcie_refclk_gt                  (pcie_refclk_gt),
     .pcie_rstn                       (pcie_rstn),
@@ -847,6 +852,8 @@ module qdma_subsystem #(
       //.reg_pfch_tag(qdma_c2h_pfch_tag),
       //.reg_bypass_valid(qdma_c2h_bypass_enable),
       .reg_debug(debug),
+      .reg_qmask(qmask),
+      .reg_fence(fence),
       
       .external_qid(axis_qdma_c2h_ctrl_qid),
       .external_qid_data({ 24'b0, qdma_c2h_bypass_enable,qdma_c2h_pfch_tag,reg_num_desc,qdma_c2h_pkt_addr}),

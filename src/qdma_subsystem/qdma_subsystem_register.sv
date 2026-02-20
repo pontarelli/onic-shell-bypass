@@ -22,27 +22,27 @@
 // -----------------------------------------------------------------------------
 //  Address | Mode |          Description
 // -----------------------------------------------------------------------------
-//   0x4110 |  RW  |  REG_ADDR_LOWER
-//   0x4114 |  RW  |  REG_ADDR_UPPER
-//   0x4118 |  RW  |  REG_PORT_ID
-//   0x411C |  RW  |  REG_QID
-//   0x4120 |  RW  |  REG_FUNC
-//   0x4124 |  RW  |  REG_PFCH_TAG
-//   0x4128 |  RW  |  REG_BYPASS_ENABLE
-//   0x412C |  RO  |  REG_PKT_COUNTER
-//   0x4130 |  RO  |  REG_DST_ADDR_LOWER
-//   0x4134 |  RO  |  REG_DST_ADDR_UPPER
-//   0x4138 |  RO  |  REG_MULT_LOWER
-//   0x413C |  RO  |  REG_MULT_UPPER
-//   0x4140 |  RW  |  REG_NUM_DESC
-//   0x4144 |  RO  |  REG_MODULE_ID
-//   0x4148 |  RW  |  REG_DEBUG
-//   0x414C |  RW  |  REG_BYPASS_VALID_ZEROED_COUNTER
-//   0x4150 |  RW  |  REG_QMASK
-//   0x4154 |  RW  |  REG_FENCE
+//   0x5110 |  RW  |  REG_ADDR_LOWER
+//   0x5114 |  RW  |  REG_ADDR_UPPER
+//   0x5118 |  RW  |  REG_PORT_ID
+//   0x511C |  RW  |  REG_QID
+//   0x5120 |  RW  |  REG_FUNC
+//   0x5124 |  RW  |  REG_PFCH_TAG
+//   0x5128 |  RW  |  REG_BYPASS_ENABLE
+//   0x512C |  RO  |  REG_PKT_COUNTER
+//   0x5130 |  RO  |  REG_DST_ADDR_LOWER
+//   0x5134 |  RO  |  REG_DST_ADDR_UPPER
+//   0x5138 |  RO  |  REG_MULT_LOWER
+//   0x513C |  RO  |  REG_MULT_UPPER
+//   0x5140 |  RW  |  REG_NUM_DESC
+//   0x5144 |  RO  |  REG_MODULE_ID
+//   0x5148 |  RW  |  REG_DEBUG
+//   0x514C |  RW  |  REG_BYPASS_VALID_ZEROED_COUNTER
+//   0x5150 |  RW  |  REG_QMASK
+//   0x5154 |  RW  |  REG_FENCE
 // -----------------------------------------------------------------------------
 //  Address | Mode |          Description
-// 0x4400 - 0x44FE |  RW  | BRAM to hold per QID data - Each QID has 16 words (256B) of space:  
+// 0x5400 - 0x54FE |  RW  | BRAM to hold per QID data - Each QID has 16 words (256B) of space:  
 //     00 -     07 |  RW  | qdma_c2h_pkt_addr
 //     08 -     0B |  RW  | reg_num_desc
 //     0C -     0F |  RW  | {qdma_c2h_bypass_enable,qdma_c2h_pfch_tag}

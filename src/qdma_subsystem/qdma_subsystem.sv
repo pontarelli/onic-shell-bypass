@@ -336,7 +336,7 @@ module qdma_subsystem #(
   
   always@(posedge axis_aclk) begin
     if (~axil_aresetn) begin
-      counter_packets_value <= 0;
+      counter_packets_value <= 32'd1;
       bypass_valid_zeroed_counter <= 0;
     end
     else begin
@@ -415,8 +415,8 @@ module qdma_subsystem #(
   
   
 
-  ////43B (pad)+ 4B +3B +2B + 4B +8B       // counter_packets_value, 
-  assign debug_tdata = (debug)? {axis_qdma_c2h_tdata[511:168], qid_packet_counter,3'b0,packet_counter_ram_we,3'b0,qdma_c2h_bypass_enable,8'b0,1'b0,qdma_c2h_pfch_tag,5'b0, axis_qdma_c2h_ctrl_qid,reg_num_desc, qdma_c2h_pkt_addr + mult_result} : axis_qdma_c2h_tdata;
+  ////25B (pad) + 4B + 4B +3B +2B + 4B +8B +14 ETH      
+  assign debug_tdata = (debug)? {axis_qdma_c2h_tdata[511:312], counter_packets_value,qid_packet_counter,3'b0,packet_counter_ram_we,3'b0,qdma_c2h_bypass_enable,8'b0,1'b0,qdma_c2h_pfch_tag,5'b0, axis_qdma_c2h_ctrl_qid,reg_num_desc, qdma_c2h_pkt_addr + mult_result,axis_qdma_c2h_tdata[111:0]} : axis_qdma_c2h_tdata;
   assign mult_result = 32'h0940*(qid_packet_counter & (reg_num_desc-1)) ; //2368*( packet_counter % reg_num_desc)
   assign c2h_byp_in_st_csh_error    = 1'b0;
   //assign c2h_byp_in_st_csh_addr     = qdma_c2h_pkt_addr + mult_result;

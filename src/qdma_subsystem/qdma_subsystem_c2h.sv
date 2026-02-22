@@ -445,7 +445,7 @@ assign mult_result = 32'h0940*(qid_pidx & (reg_num_desc-1)) ; //2368*( packet_co
   end
   assign m_axis_qdma_c2h_ctrl_qid = axis_qdma_c2h_ctrl_qid & qmask;
   assign qid_index = axis_qdma_c2h_ctrl_qid;
-  aassign byp_in_fifo_din = {qdma_c2h_pkt_addr + mult_result, pid, qid, qdma_c2h_func, qdma_c2h_pfch_tag};
+  assign byp_in_fifo_din = {qdma_c2h_pkt_addr + mult_result, pid, qid, qdma_c2h_func, qdma_c2h_pfch_tag};
   assign qid_pidx=qid_packet_counter[15:0];
   assign full= (qid_cidx==qid_pidx+1) || (qid_cidx==0 && qid_pidx==reg_num_desc-1); // full when next write will make cidx catch up with pidx
   

@@ -60,11 +60,11 @@ module qdma_subsystem_c2h #(
   
   output                 [10:0] qid_index,
   output                        packet_counter_ram_we,
-  input                  [31:0] qid_packet_counter;
+  input                  [31:0] qid_packet_counter,
   input                 [127:0] qid_data,       
   
-  output reg             [31:0] full_counter;
-  output reg             [31:0] pkt_counter;
+  output reg             [31:0] full_counter,
+  output reg             [31:0] pkt_counter,
 
   
 
@@ -123,12 +123,11 @@ module qdma_subsystem_c2h #(
   
   wire [63:0] mult_result;
   wire [31:0] reg_num_desc;
-  wire [31:0] qid_packet_counter;
   wire [15:0] qid_pidx;
   wire [15:0] qid_cidx;
   wire full;
   wire [511:0] debug_tdata;
-  wire axis_qdma_c2h_ctrl_qid
+  wire axis_qdma_c2h_ctrl_qid;
   
   reg [63:0]  qdma_c2h_pkt_addr;
   reg  [2:0]  qdma_c2h_port_id;
@@ -440,7 +439,7 @@ assign mult_result = 32'h0940*(qid_pidx & (reg_num_desc-1)) ; //2368*( packet_co
     end
     else begin
       qid = m_axis_qdma_c2h_ctrl_qid; 
-      pid = axis_qdma_c2h_ctrl_port_id;
+      pid = m_axis_qdma_c2h_ctrl_port_id;
       byp_in_fifo_wr_en = packet_counter_ram_we;
     end
   end

@@ -55,6 +55,28 @@ module qdma_subsystem_c2h #(
   output                        m_axis_qdma_cpl_ctrl_no_wrb_marker,
   input                         m_axis_qdma_cpl_tready,
 
+  input                         debug,
+  input                  [10:0] qmask,
+  
+  output                 [10:0] qid_index,
+  output                        packet_counter_ram_we,
+  input                  [31:0] qid_packet_counter;
+  input                 [127:0] qid_data,       
+  
+  output reg             [31:0] full_counter;
+  output reg             [31:0] pkt_counter;
+
+  
+
+  output                         c2h_byp_in_st_csh_vld,
+  output                  [63:0] c2h_byp_in_st_csh_addr,
+  output                   [2:0] c2h_byp_in_st_csh_port_id,
+  output                  [10:0] c2h_byp_in_st_csh_qid,
+  output                         c2h_byp_in_st_csh_error,
+  output                   [7:0] c2h_byp_in_st_csh_func,
+  output                   [6:0] c2h_byp_in_st_csh_pfch_tag,
+  input                          c2h_byp_in_st_csh_rdy,
+  
   output                        c2h_status_valid,
   output                 [15:0] c2h_status_bytes,
   output reg              [1:0] c2h_status_func_id,
@@ -92,6 +114,32 @@ module qdma_subsystem_c2h #(
   wire              [42:0] cpl_fifo_dout;
   wire                     cpl_fifo_empty;
   wire                     cpl_fifo_full;
+
+  //bypass path signals
+  wire  byp_in_fifo_rd_en,byp_in_fifo_empty;
+  reg   byp_in_fifo_wr_en;
+  wire [92:0] byp_in_fifo_din;
+
+  
+  wire [63:0] mult_result;
+  wire [31:0] reg_num_desc;
+  wire [31:0] qid_packet_counter;
+  wire [15:0] qid_pidx;
+  wire [15:0] qid_cidx;
+  wire full;
+  wire [511:0] debug_tdata;
+  wire axis_qdma_c2h_ctrl_qid
+  
+  reg [63:0]  qdma_c2h_pkt_addr;
+  reg  [2:0]  qdma_c2h_port_id;
+  reg [10:0]  qdma_c2h_qid;
+  wire  [7:0]  qdma_c2h_func;
+  wire  [6:0]  qdma_c2h_pfch_tag; 
+  reg [10:0] packet_counter_addr;
+  
+  reg [10:0] qid;
+  reg [2:0]  pid;
+  
 
   generate for (genvar i = 0; i < NUM_PHYS_FUNC; i += 1) begin
     always @(posedge axis_aclk) begin
@@ -159,12 +207,12 @@ module qdma_subsystem_c2h #(
     .s_axis_tready (axis_c2h_tready),
 
     .m_axis_tvalid (m_axis_qdma_c2h_tvalid),
-    .m_axis_tdata  (m_axis_qdma_c2h_tdata),
+    .m_axis_tdata  (debug_tdata),
     .m_axis_tkeep  (),
     .m_axis_tlast  (m_axis_qdma_c2h_tlast),
     .m_axis_tid    (),
     .m_axis_tdest  (),
-    .m_axis_tuser  ({m_axis_qdma_c2h_ctrl_len, m_axis_qdma_c2h_ctrl_qid}),
+    .m_axis_tuser  ({m_axis_qdma_c2h_ctrl_len, axis_qdma_c2h_ctrl_qid}),
     .m_axis_tready (m_axis_qdma_c2h_tready),
 
     .aclk          (axis_aclk),
@@ -275,7 +323,7 @@ module qdma_subsystem_c2h #(
   );
 
   assign cpl_fifo_wr_en = m_axis_qdma_c2h_tvalid && m_axis_qdma_c2h_tlast && m_axis_qdma_c2h_tready;
-  assign cpl_fifo_din   = {m_axis_qdma_c2h_ctrl_qid, 16'(pkt_pld_id + 1), m_axis_qdma_c2h_ctrl_len};
+  assign cpl_fifo_din   = {axis_qdma_c2h_ctrl_qid, 16'(pkt_pld_id + 1), m_axis_qdma_c2h_ctrl_len};
   assign cpl_fifo_rd_en = m_axis_qdma_cpl_tvalid && m_axis_qdma_cpl_tready;
 
   assign m_axis_qdma_cpl_tvalid               = ~cpl_fifo_empty;
@@ -314,5 +362,93 @@ module qdma_subsystem_c2h #(
       end
     end
   end
+
+//add logic for c2h bypass path
+
+assign {qid_cidx, qdma_c2h_bypass_enable,qdma_c2h_pfch_tag,reg_num_desc,qdma_c2h_pkt_addr}=qid_data[119:0];
+assign c2h_byp_in_st_csh_vld = ~byp_in_fifo_empty;
+assign byp_in_fifo_rd_en = c2h_byp_in_st_csh_rdy && c2h_byp_in_st_csh_vld;
+assign c2h_byp_in_st_csh_error = 1'b0;
+
+
+always@(posedge axis_aclk) begin
+  if (~axil_aresetn) begin
+    pkt_counter <= 32'd1;
+    full_counter <= 0;
+  end
+  else begin
+    pkt_counter = pkt_counter +(m_axis_qdma_c2h_tlast && m_axis_qdma_c2h_tvalid && m_axis_qdma_c2h_tready);
+    if (full)
+      full_counter <= full_counter + (m_axis_qdma_c2h_tlast && m_axis_qdma_c2h_tvalid && m_axis_qdma_c2h_tready);  
+  end
+end
+
+////25B (pad) + 4B + 4B +3B +2B + 4B +8B +14 ETH      
+assign m_axis_qdma_c2h_tdata = (debug)? {debug_tdata[511:312], pkt_counter,qid_packet_counter,3'b0,packet_counter_ram_we,3'b0,qdma_c2h_bypass_enable,8'b0,1'b0,qdma_c2h_pfch_tag,5'b0, axis_qdma_c2h_ctrl_qid,reg_num_desc, qdma_c2h_pkt_addr + mult_result,debug_tdata[111:0]} : debug_tdata;
+assign mult_result = 32'h0940*(qid_pidx & (reg_num_desc-1)) ; //2368*( packet_counter % reg_num_desc)
+  
+
+ xpm_fifo_sync #(
+    .DOUT_RESET_VALUE    ("0"),
+    .ECC_MODE            ("no_ecc"),
+    .FIFO_MEMORY_TYPE    ("auto"),
+    .FIFO_WRITE_DEPTH    (32),
+    .READ_DATA_WIDTH     (93),
+    .READ_MODE           ("fwft"),
+    .WRITE_DATA_WIDTH    (93)
+  ) byp_in_fifo_inst (
+    .wr_en         (byp_in_fifo_wr_en),
+    .din           (byp_in_fifo_din),
+    .wr_ack        (),
+    .rd_en         (byp_in_fifo_rd_en),
+    .data_valid    (),
+    .dout          ({c2h_byp_in_st_csh_addr, c2h_byp_in_st_csh_port_id, c2h_byp_in_st_csh_qid, c2h_byp_in_st_csh_func, c2h_byp_in_st_csh_pfch_tag}),
+
+    .wr_data_count (),
+    .rd_data_count (),
+
+    .empty         (byp_in_fifo_empty),
+    //.full          (byp_in_fifo_full),
+    .almost_empty  (),
+    .almost_full   (),
+    .overflow      (),
+    .underflow     (),
+    .prog_empty    (),
+    .prog_full     (),
+    .sleep         (1'b0),
+
+    .sbiterr       (),
+    .dbiterr       (),
+    .injectsbiterr (1'b0),
+    .injectdbiterr (1'b0),
+
+    .wr_clk        (axis_aclk),
+    .rst           (~axil_aresetn),
+    .rd_rst_busy   (),
+    .wr_rst_busy   ()
+  );
+
+  
+  assign qdma_c2h_func=8'b0;
+  
+  assign packet_counter_ram_we = qdma_c2h_bypass_enable && m_axis_qdma_c2h_tlast && m_axis_qdma_c2h_tvalid && m_axis_qdma_c2h_tready;
+  always@(posedge axis_aclk) begin
+    if (~axil_aresetn) begin
+      byp_in_fifo_wr_en = 1'b0;
+      qid = 11'b0;
+      pid = 3'b0;
+    end
+    else begin
+      qid = m_axis_qdma_c2h_ctrl_qid; 
+      pid = axis_qdma_c2h_ctrl_port_id;
+      byp_in_fifo_wr_en = packet_counter_ram_we;
+    end
+  end
+  assign m_axis_qdma_c2h_ctrl_qid = axis_qdma_c2h_ctrl_qid & qmask;
+  assign qid_index = axis_qdma_c2h_ctrl_qid;
+  aassign byp_in_fifo_din = {qdma_c2h_pkt_addr + mult_result, pid, qid, qdma_c2h_func, qdma_c2h_pfch_tag};
+  assign qid_pidx=qid_packet_counter[15:0];
+  assign full= (qid_cidx==qid_pidx+1) || (qid_cidx==0 && qid_pidx==reg_num_desc-1); // full when next write will make cidx catch up with pidx
+  
 
 endmodule: qdma_subsystem_c2h

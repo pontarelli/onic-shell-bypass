@@ -37,7 +37,7 @@
 //   0x5140 |  RW  |  UNUSED
 //   0x5144 |  RO  |  REG_MODULE_ID
 //   0x5148 |  RW  |  REG_DEBUG
-//   0x514C |  RO  |  REG_COUNTER_FULL
+//   0x514C |  RO  |  REG_FULL_COUNTER
 //   0x5150 |  RW  |  REG_QMASK
 //   0x5154 |  RW  |  REG_FENCE
 // -----------------------------------------------------------------------------
@@ -73,11 +73,11 @@ module qdma_subsystem_register (
   output  [1:0] s_axil_rresp,
   input         s_axil_rready,
 
-  input     [10:0] external_qid,
+  input     [10:0] external_qid_index,
   output   [127:0] external_qid_data,
   
   input            external_packet_counter_ram_we,
-  output    [31:0] external_packet_counter_data,
+  output    [31:0] external_qid_packet_counter,
   
   output reg        reg_debug,
   output reg        reg_fence,
@@ -85,7 +85,7 @@ module qdma_subsystem_register (
 
   
   input      [31:0] pkt_counter,
-  input      [31:0] reg_counter_full,
+  input      [31:0] full_counter,
   
 
   input         axil_aclk,
@@ -99,7 +99,7 @@ module qdma_subsystem_register (
   localparam REG_PKT_COUNTER    = 12'h12C;
   localparam REG_MODULE_ID      = 12'h144;
   localparam REG_DEBUG          = 12'h148;
-  localparam REG_COUNTER_FULL   = 12'h14C;
+  localparam REG_FULL_COUNTER   = 12'h14C;
   localparam REG_QMASK          = 12'h150;
   localparam REG_FENCE          = 12'h154;
   // From this point onwards, registers are reserved accessing bram
@@ -154,7 +154,7 @@ module qdma_subsystem_register (
     .din  (reg_din),
     .douta (qid_ram_douta),
     .clkb  (axis_aclk),
-    .addrb (external_qid),
+    .addrb (external_qid_index),
     .doutb (external_qid_data)
   );
 
@@ -173,8 +173,8 @@ module qdma_subsystem_register (
     .douta (packet_counter_ram_douta),
     .clkb  (axis_aclk),
     .web   (external_packet_counter_ram_we),
-    .addrb (external_qid),
-    .doutb (external_packet_counter_data)
+    .addrb (external_qid_index),
+    .doutb (external_qid_packet_counter)
   );
   
 
@@ -232,8 +232,8 @@ module qdma_subsystem_register (
         REG_RAM_INDIR_ADDR: begin
             reg_dout <= qid_page_index;
         end
-        REG_COUNTER_FULL: begin
-            reg_dout <= reg_counter_full;
+        REG_FULL_COUNTER: begin
+            reg_dout <= full_counter;
         end
         REG_QMASK: begin
             reg_dout <= reg_qmask;

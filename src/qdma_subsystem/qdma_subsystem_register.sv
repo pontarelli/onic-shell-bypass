@@ -22,22 +22,22 @@
 // -----------------------------------------------------------------------------
 //  Address | Mode |          Description
 // -----------------------------------------------------------------------------
-//   0x5110 |  RW  |  REG_ADDR_LOWER
-//   0x5114 |  RW  |  REG_ADDR_UPPER
-//   0x5118 |  RW  |  REG_PORT_ID
-//   0x511C |  RW  |  REG_QID
-//   0x5120 |  RW  |  REG_FUNC
-//   0x5124 |  RW  |  REG_PFCH_TAG
-//   0x5128 |  RW  |  REG_BYPASS_ENABLE
+//   0x5110 |  RW  |  UNUSED
+//   0x5114 |  RW  |  UNUSED
+//   0x5118 |  RW  |  UNUSED
+//   0x511C |  RW  |  UNUSED
+//   0x5120 |  RW  |  UNUSED
+//   0x5124 |  RW  |  UNUSED
+//   0x5128 |  RW  |  UNUSED
 //   0x512C |  RO  |  REG_PKT_COUNTER
-//   0x5130 |  RO  |  REG_DST_ADDR_LOWER
-//   0x5134 |  RO  |  REG_DST_ADDR_UPPER
-//   0x5138 |  RO  |  REG_MULT_LOWER
-//   0x513C |  RO  |  REG_MULT_UPPER
-//   0x5140 |  RW  |  REG_NUM_DESC
+//   0x5130 |  RO  |  UNUSED
+//   0x5134 |  RO  |  UNUSED
+//   0x5138 |  RO  |  UNUSED
+//   0x513C |  RO  |  UNUSED
+//   0x5140 |  RW  |  UNUSED
 //   0x5144 |  RO  |  REG_MODULE_ID
 //   0x5148 |  RW  |  REG_DEBUG
-//   0x514C |  RW  |  REG_BYPASS_VALID_ZEROED_COUNTER
+//   0x514C |  RO  |  REG_COUNTER_FULL
 //   0x5150 |  RW  |  REG_QMASK
 //   0x5154 |  RW  |  REG_FENCE
 // -----------------------------------------------------------------------------
@@ -45,7 +45,7 @@
 // 0x5400 - 0x54FE |  RW  | BRAM to hold per QID data - Each QID has 16 words (256B) of space:  
 //     00 -     07 |  RW  | qdma_c2h_pkt_addr
 //     08 -     0B |  RW  | reg_num_desc
-//     0C -     0F |  RW  | {qdma_c2h_bypass_enable,qdma_c2h_pfch_tag}
+//     0C -     0F |  RW  | {qid_cidx,qdma_c2h_bypass_enable,qdma_c2h_pfch_tag}
 //     10 -     13 |  RW  | qid_packet_counter
 //     14 -     FF |   -  | RESERVED
 // 0x4FF0          |  RW  | REG_RAM_INDIR_ADDR (QID)
@@ -79,25 +79,14 @@ module qdma_subsystem_register (
   input            external_packet_counter_ram_we,
   output    [31:0] external_packet_counter_data,
   
-  
-  
-  output reg [63:0] reg_pkt_addr,
-  output reg [31:0] reg_num_desc,
-  output reg  [2:0] reg_port_id,
-  output reg [10:0] reg_qid,
-  output reg [7:0]  reg_func,
-  output reg [6:0]  reg_pfch_tag,
-  output reg        reg_bypass_enable,
   output reg        reg_debug,
   output reg        reg_fence,
   output reg [10:0] reg_qmask,
 
   
   input      [31:0] pkt_counter,
-  input      [31:0] bypass_ready_zeroed_counter,
-  input      [63:0] dst_addr,
-  input      [63:0] mult_result,
-
+  input      [31:0] reg_counter_full,
+  
 
   input         axil_aclk,
   input         axis_aclk,
@@ -107,22 +96,10 @@ module qdma_subsystem_register (
   localparam C_ADDR_W = 12;
   localparam MODULE_ID = 32'hA9DBEA;
   
-  localparam REG_ADDR_LOWER     = 12'h110;
-  localparam REG_ADDR_UPPER     = 12'h114;
-  localparam REG_PORT_ID        = 12'h118;
-  localparam REG_QID            = 12'h11C;
-  localparam REG_FUNC           = 12'h120;
-  localparam REG_PFCH_TAG       = 12'h124;
-  localparam REG_BYPASS_ENABLE  = 12'h128;
   localparam REG_PKT_COUNTER    = 12'h12C;
-  localparam REG_DST_ADDR_LOWER = 12'h130;
-  localparam REG_DST_ADDR_UPPER = 12'h134;
-  localparam REG_MULT_LOWER     = 12'h138;
-  localparam REG_MULT_UPPER     = 12'h13C;
-  localparam REG_NUM_DESC       = 12'h140;
   localparam REG_MODULE_ID      = 12'h144;
   localparam REG_DEBUG          = 12'h148;
-  localparam REG_BYPASS_READY_ZEROED_COUNTER = 12'h14C;
+  localparam REG_COUNTER_FULL   = 12'h14C;
   localparam REG_QMASK          = 12'h150;
   localparam REG_FENCE          = 12'h154;
   // From this point onwards, registers are reserved accessing bram
@@ -200,14 +177,6 @@ module qdma_subsystem_register (
     .doutb (external_packet_counter_data)
   );
   
-//  reg  [31:0] reg_addr_lower;
-//  reg  [31:0] reg_addr_higher;
-//  reg   [2:0] reg_port_id;
-//  reg  [10:0] reg_qid;
-//  reg   [7:0] reg_func;
-//  reg   [6:0] reg_pfch_tag;
-
-
 
   axi_lite_register #(
     .CLOCKING_MODE ("common_clock"),
@@ -251,38 +220,8 @@ module qdma_subsystem_register (
     end
     else if (reg_en && ~reg_we) begin
       case (reg_addr)
-        REG_ADDR_LOWER: begin
-            reg_dout <= reg_pkt_addr[31:0];
-        end
-        REG_ADDR_UPPER: begin
-            reg_dout <= reg_pkt_addr[63:32];
-        end
-        REG_PORT_ID: begin
-            reg_dout <= reg_port_id;
-        end
-        REG_QID: begin
-            reg_dout <= reg_qid;
-        end
-        REG_FUNC: begin
-            reg_dout <= reg_func;
-        end
-        REG_PFCH_TAG: begin
-            reg_dout <= reg_pfch_tag;
-        end
-        REG_BYPASS_ENABLE: begin
-            reg_dout <= reg_bypass_enable;
-        end
         REG_PKT_COUNTER: begin
             reg_dout <= pkt_counter;
-        end
-        REG_MULT_LOWER: begin
-            reg_dout <= mult_result[31:0];
-        end
-        REG_MULT_UPPER: begin
-            reg_dout <= mult_result[63:32];
-        end
-        REG_NUM_DESC: begin
-            reg_dout <= reg_num_desc;
         end
         REG_MODULE_ID: begin
             reg_dout <= MODULE_ID;
@@ -293,8 +232,8 @@ module qdma_subsystem_register (
         REG_RAM_INDIR_ADDR: begin
             reg_dout <= qid_page_index;
         end
-        REG_BYPASS_READY_ZEROED_COUNTER: begin
-            reg_dout <= bypass_ready_zeroed_counter;
+        REG_COUNTER_FULL: begin
+            reg_dout <= reg_counter_full;
         end
         REG_QMASK: begin
             reg_dout <= reg_qmask;
@@ -311,42 +250,12 @@ module qdma_subsystem_register (
   
   always @(posedge axil_aclk) begin
     if (~axil_aresetn) begin
-        reg_pkt_addr <= 0;    
-        reg_port_id <= 0;
-        reg_qid <= 0;     
-        reg_func <= 0;    
-        reg_pfch_tag <= 0;
-        reg_bypass_enable <= 0;
         reg_debug <= 0;
         reg_qmask <= 11'h7ff;
         reg_fence <= 0;
     end else begin
         if (reg_en && reg_we) begin
             case (reg_addr)
-                REG_ADDR_LOWER: begin
-                    reg_pkt_addr[31:0] <= reg_din;
-                end
-                REG_ADDR_UPPER: begin
-                    reg_pkt_addr[63:32] <= reg_din;
-                end
-                REG_PORT_ID: begin
-                    reg_port_id <= reg_din;
-                end
-                REG_QID: begin
-                    reg_qid <= reg_din;
-                end
-                REG_FUNC: begin
-                    reg_func <= reg_din;
-                end
-                REG_PFCH_TAG: begin
-                    reg_pfch_tag <= reg_din;
-                end
-                REG_BYPASS_ENABLE: begin
-                    reg_bypass_enable <= reg_din;
-                end
-                REG_NUM_DESC: begin
-                    reg_num_desc <= reg_din;
-                end
                 REG_DEBUG: begin
                     reg_debug <= reg_din;
                 end

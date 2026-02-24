@@ -21,7 +21,7 @@ proc _do_impl {jobs {strategies ""}} {
         wait_on_run impl_1
     } else {
         set impl_runs "impl_1"
-        #set_property STRATEGY "[lindex $strategies 0]" [get_runs impl_1]
+        set_property STRATEGY "[lindex $strategies 0]" [get_runs impl_1]
 	#set_property STEPS.OPT_DESIGN.ARGS.DIRECTIVE ExploreSequentialArea [get_runs impl_1]
 	#set_property STEPS.PLACE_DESIGN.ARGS.DIRECTIVE EarlyBlockPlacement [get_runs impl_1]
 	#set_property STEPS.PHYS_OPT_DESIGN.ARGS.DIRECTIVE AggressiveExplore [get_runs impl_1]

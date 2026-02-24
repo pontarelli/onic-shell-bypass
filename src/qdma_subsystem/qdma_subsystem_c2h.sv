@@ -127,7 +127,7 @@ module qdma_subsystem_c2h #(
   wire [15:0] qid_cidx;
   wire full;
   wire [511:0] debug_tdata;
-  wire axis_qdma_c2h_ctrl_qid;
+  wire [10:0] axis_qdma_c2h_ctrl_qid;
   
   reg [63:0]  qdma_c2h_pkt_addr;
   reg  [2:0]  qdma_c2h_port_id;
@@ -365,6 +365,8 @@ module qdma_subsystem_c2h #(
 //add logic for c2h bypass path
 
 assign {qid_cidx, qdma_c2h_bypass_enable,qdma_c2h_pfch_tag,reg_num_desc,qdma_c2h_pkt_addr}=qid_data[119:0];
+//TODO: ANDREA: check con segnale "full"
+//assign c2h_byp_in_st_csh_vld = (~byp_in_fifo_empty) && (~full);
 assign c2h_byp_in_st_csh_vld = ~byp_in_fifo_empty;
 assign byp_in_fifo_rd_en = c2h_byp_in_st_csh_rdy && c2h_byp_in_st_csh_vld;
 assign c2h_byp_in_st_csh_error = 1'b0;
@@ -408,6 +410,7 @@ assign mult_result = 32'h0940*(qid_pidx & (reg_num_desc-1)) ; //2368*( packet_co
 
     .empty         (byp_in_fifo_empty),
     //.full          (byp_in_fifo_full),
+    .full          (),
     .almost_empty  (),
     .almost_full   (),
     .overflow      (),
@@ -444,7 +447,7 @@ assign mult_result = 32'h0940*(qid_pidx & (reg_num_desc-1)) ; //2368*( packet_co
     end
   end
   assign m_axis_qdma_c2h_ctrl_qid = axis_qdma_c2h_ctrl_qid & qmask;
-  assign qid_index = axis_qdma_c2h_ctrl_qid;
+  assign qid_index = axis_qdma_c2h_ctrl_qid; //axis_c2h_tuser_qid (1cc before)
   assign byp_in_fifo_din = {qdma_c2h_pkt_addr + mult_result, pid, qid, qdma_c2h_func, qdma_c2h_pfch_tag};
   assign qid_pidx=qid_packet_counter[15:0];
   assign full= (qid_cidx==qid_pidx+1) || (qid_cidx==0 && qid_pidx==reg_num_desc-1); // full when next write will make cidx catch up with pidx

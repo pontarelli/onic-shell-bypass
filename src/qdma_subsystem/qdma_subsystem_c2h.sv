@@ -139,6 +139,11 @@ module qdma_subsystem_c2h #(
   reg [10:0] qid;
   reg [2:0]  pid;
   
+  wire m_axis_qdma_c2h_sop;
+  wire m_axis_qdma_c2h_tvalid_fifo_out;
+  reg axis_c2h_sop;
+  reg drop_prev;
+  wire drop;
 
   generate for (genvar i = 0; i < NUM_PHYS_FUNC; i += 1) begin
     always @(posedge axis_aclk) begin
@@ -193,7 +198,7 @@ module qdma_subsystem_c2h #(
 
   axi_stream_register_slice #(
     .TDATA_W (512),
-    .TUSER_W (16 + 11),
+    .TUSER_W (1+16 + 11),
     .MODE    ("forward")
   ) slice_inst (
     .s_axis_tvalid (axis_c2h_tvalid),
@@ -202,31 +207,49 @@ module qdma_subsystem_c2h #(
     .s_axis_tlast  (axis_c2h_tlast),
     .s_axis_tid    (0),
     .s_axis_tdest  (0),
-    .s_axis_tuser  ({axis_c2h_tuser_size, axis_c2h_tuser_qid}),
+    .s_axis_tuser  ({axis_c2h_sop,axis_c2h_tuser_size, axis_c2h_tuser_qid}),
     .s_axis_tready (axis_c2h_tready),
 
-    .m_axis_tvalid (m_axis_qdma_c2h_tvalid),
+    .m_axis_tvalid (m_axis_qdma_c2h_tvalid_fifo_out),
     .m_axis_tdata  (debug_tdata),
     .m_axis_tkeep  (),
     .m_axis_tlast  (m_axis_qdma_c2h_tlast),
     .m_axis_tid    (),
     .m_axis_tdest  (),
-    .m_axis_tuser  ({m_axis_qdma_c2h_ctrl_len, axis_qdma_c2h_ctrl_qid}),
+    .m_axis_tuser  ({m_axis_qdma_c2h_sop,m_axis_qdma_c2h_ctrl_len, axis_qdma_c2h_ctrl_qid}),
     .m_axis_tready (m_axis_qdma_c2h_tready),
 
     .aclk          (axis_aclk),
     .aresetn       (axil_aresetn)
   );
-
+  assign m_axis_qdma_c2h_tvalid = (!drop) & m_axis_qdma_c2h_tvalid_fifo_out;
   always @(posedge axis_aclk) begin
     if (~axil_aresetn) begin
       m_axis_qdma_c2h_mty <= 0;
     end
     else if (axis_c2h_tvalid && axis_c2h_tready) begin
-       m_axis_qdma_c2h_mty <= (axis_c2h_tlast) ? (axis_c2h_tuser_size[5:0] == 0) ? 0 : (64 - axis_c2h_tuser_size[5:0]) : 0;
+          m_axis_qdma_c2h_mty <= (axis_c2h_tlast) ? (axis_c2h_tuser_size[5:0] == 0) ? 0 : (64 - axis_c2h_tuser_size[5:0]) : 0;
     end
   end
 
+  always @(posedge axis_aclk) begin
+    if (~axil_aresetn) begin
+      axis_c2h_sop = 1;
+      drop_prev =0;
+    end
+    else begin 
+           if (axis_c2h_tvalid && axis_c2h_tready && !axis_c2h_tlast) begin
+              axis_c2h_sop=0;
+           end
+           if (axis_c2h_tvalid && axis_c2h_tready && axis_c2h_tlast) begin
+              axis_c2h_sop=1;
+           end
+           drop_prev = drop;
+    end
+  end          
+  
+  assign drop =(m_axis_qdma_c2h_sop)? full : drop_prev;
+  
   assign m_axis_qdma_c2h_tcrc          = crc32_out;
   assign m_axis_qdma_c2h_ctrl_marker   = 1'b0;
   assign m_axis_qdma_c2h_ctrl_port_id  = 0;
@@ -366,8 +389,8 @@ module qdma_subsystem_c2h #(
 
 assign {qid_cidx, qdma_c2h_bypass_enable,qdma_c2h_pfch_tag,reg_num_desc,qdma_c2h_pkt_addr}=qid_data[119:0];
 //TODO: ANDREA: check con segnale "full"
-//assign c2h_byp_in_st_csh_vld = (~byp_in_fifo_empty) && (~full);
-assign c2h_byp_in_st_csh_vld = ~byp_in_fifo_empty;
+assign c2h_byp_in_st_csh_vld = (~byp_in_fifo_empty) && (~full);
+//assign c2h_byp_in_st_csh_vld = ~byp_in_fifo_empty;
 assign byp_in_fifo_rd_en = c2h_byp_in_st_csh_rdy && c2h_byp_in_st_csh_vld;
 assign c2h_byp_in_st_csh_error = 1'b0;
 
@@ -380,7 +403,7 @@ always@(posedge axis_aclk) begin
   else begin
     pkt_counter = pkt_counter +(m_axis_qdma_c2h_tlast && m_axis_qdma_c2h_tvalid && m_axis_qdma_c2h_tready);
     if (full)
-      full_counter <= full_counter + (m_axis_qdma_c2h_tlast && m_axis_qdma_c2h_tvalid && m_axis_qdma_c2h_tready);  
+      full_counter <= full_counter + (m_axis_qdma_c2h_tlast && m_axis_qdma_c2h_tvalid_fifo_out && m_axis_qdma_c2h_tready);  
   end
 end
 

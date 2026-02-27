@@ -267,6 +267,7 @@ module qdma_subsystem #(
   wire             debug;
   wire      [10:0] qmask;
   wire      [10:0] qid_index;
+  wire      [10:0] qid_index_update;
   wire             packet_counter_ram_we;
   wire      [31:0] qid_packet_counter;
   wire     [127:0] qid_data;
@@ -742,6 +743,7 @@ module qdma_subsystem #(
       .reg_debug(debug),
       .reg_qmask(qmask),
       .external_qid_index(qid_index),
+      .external_qid_index_update(qid_index_update),
       .external_packet_counter_ram_we(packet_counter_ram_we),
       .external_qid_packet_counter(qid_packet_counter),
       .external_qid_data(qid_data),
@@ -825,6 +827,7 @@ module qdma_subsystem #(
       .qmask                               (qmask),
       
       .qid_index                           (qid_index),
+      .qid_index_update                    (qid_index_update),
       .qid_data                            (qid_data),
        
       .packet_counter_ram_we               (packet_counter_ram_we),

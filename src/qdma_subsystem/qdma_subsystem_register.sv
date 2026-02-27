@@ -74,6 +74,7 @@ module qdma_subsystem_register (
   input         s_axil_rready,
 
   input     [10:0] external_qid_index,
+  input     [10:0] external_qid_index_update,
   output   [127:0] external_qid_data,
   
   input            external_packet_counter_ram_we,
@@ -173,6 +174,7 @@ module qdma_subsystem_register (
     .douta (packet_counter_ram_douta),
     .clkb  (axis_aclk),
     .web   (external_packet_counter_ram_we),
+    .waddr (external_qid_index_update),
     .addrb (external_qid_index),
     .doutb (external_qid_packet_counter)
   );

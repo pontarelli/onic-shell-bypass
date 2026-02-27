@@ -125,7 +125,7 @@ module qdma_subsystem_c2h #(
   wire [31:0] reg_num_desc;
   wire [15:0] qid_pidx;
   wire [15:0] qid_cidx;
-  wire full;
+  wire full_queue;
   wire [511:0] debug_tdata;
   wire [10:0] axis_qdma_c2h_ctrl_qid;
   
@@ -222,7 +222,7 @@ module qdma_subsystem_c2h #(
     .aclk          (axis_aclk),
     .aresetn       (axil_aresetn)
   );
-  assign m_axis_qdma_c2h_tvalid = (!drop) & m_axis_qdma_c2h_tvalid_fifo_out;
+  assign m_axis_qdma_c2h_tvalid = m_axis_qdma_c2h_tvalid_fifo_out; //(!drop) & m_axis_qdma_c2h_tvalid_fifo_out;
   always @(posedge axis_aclk) begin
     if (~axil_aresetn) begin
       m_axis_qdma_c2h_mty <= 0;
@@ -248,7 +248,7 @@ module qdma_subsystem_c2h #(
     end
   end          
   
-  assign drop =(m_axis_qdma_c2h_sop)? full : drop_prev;
+  assign drop =(m_axis_qdma_c2h_sop)? full_queue : drop_prev;
   
   assign m_axis_qdma_c2h_tcrc          = crc32_out;
   assign m_axis_qdma_c2h_ctrl_marker   = 1'b0;
@@ -389,7 +389,7 @@ module qdma_subsystem_c2h #(
 
 assign {qid_cidx, qdma_c2h_bypass_enable,qdma_c2h_pfch_tag,reg_num_desc,qdma_c2h_pkt_addr}=qid_data[119:0];
 //TODO: ANDREA: check con segnale "full"
-assign c2h_byp_in_st_csh_vld = (~byp_in_fifo_empty) && (~full);
+assign c2h_byp_in_st_csh_vld = (~byp_in_fifo_empty) && (~full_queue);
 //assign c2h_byp_in_st_csh_vld = ~byp_in_fifo_empty;
 assign byp_in_fifo_rd_en = c2h_byp_in_st_csh_rdy && c2h_byp_in_st_csh_vld;
 assign c2h_byp_in_st_csh_error = 1'b0;
@@ -402,7 +402,7 @@ always@(posedge axis_aclk) begin
   end
   else begin
     pkt_counter = pkt_counter +(m_axis_qdma_c2h_tlast && m_axis_qdma_c2h_tvalid && m_axis_qdma_c2h_tready);
-    if (full)
+    if (full_queue)
       full_counter <= full_counter + (m_axis_qdma_c2h_tlast && m_axis_qdma_c2h_tvalid_fifo_out && m_axis_qdma_c2h_tready);  
   end
 end
@@ -473,7 +473,8 @@ assign mult_result = 32'h0940*(qid_pidx & (reg_num_desc-1)) ; //2368*( packet_co
   assign qid_index = axis_qdma_c2h_ctrl_qid; //axis_c2h_tuser_qid (1cc before)
   assign byp_in_fifo_din = {qdma_c2h_pkt_addr + mult_result, pid, qid, qdma_c2h_func, qdma_c2h_pfch_tag};
   assign qid_pidx=qid_packet_counter[15:0];
-  assign full= (qid_cidx==qid_pidx+1) || (qid_cidx==0 && qid_pidx==reg_num_desc-1); // full when next write will make cidx catch up with pidx
+  //assign full= (qid_cidx==qid_pidx+1) || (qid_cidx==0 && qid_pidx==reg_num_desc-1); // full when next write will make cidx catch up with pidx
+  assign full_queue= (qid_cidx-qid_pidx>0)? (qid_cidx-qid_pidx<3):(reg_num_desc+qid_cidx-qid_pidx-1<3);  
   
 
 endmodule: qdma_subsystem_c2h

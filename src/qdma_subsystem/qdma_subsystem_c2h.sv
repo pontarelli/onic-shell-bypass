@@ -223,7 +223,8 @@ module qdma_subsystem_c2h #(
     .aclk          (axis_aclk),
     .aresetn       (axil_aresetn)
   );
-  assign m_axis_qdma_c2h_tvalid = m_axis_qdma_c2h_tvalid_fifo_out; //(!drop) & m_axis_qdma_c2h_tvalid_fifo_out;
+  //assign m_axis_qdma_c2h_tvalid = m_axis_qdma_c2h_tvalid_fifo_out; 
+  assign m_axis_qdma_c2h_tvalid = (!drop) & m_axis_qdma_c2h_tvalid_fifo_out;
   always @(posedge axis_aclk) begin
     if (~axil_aresetn) begin
       m_axis_qdma_c2h_mty <= 0;
@@ -347,7 +348,8 @@ module qdma_subsystem_c2h #(
 
   assign cpl_fifo_wr_en = m_axis_qdma_c2h_tvalid && m_axis_qdma_c2h_tlast && m_axis_qdma_c2h_tready;
   assign cpl_fifo_din   = {axis_qdma_c2h_ctrl_qid, 16'(pkt_pld_id + 1), m_axis_qdma_c2h_ctrl_len};
-  assign cpl_fifo_rd_en = m_axis_qdma_cpl_tvalid && m_axis_qdma_cpl_tready && !full_queue; // only read when the completion packet can be sent out (i.e. not blocked by full queue)
+  //assign cpl_fifo_rd_en = m_axis_qdma_cpl_tvalid && m_axis_qdma_cpl_tready && !full_queue; // only read when the completion packet can be sent out (i.e. not blocked by full queue)
+  assign cpl_fifo_rd_en = m_axis_qdma_cpl_tvalid && m_axis_qdma_cpl_tready; 
 
   assign m_axis_qdma_cpl_tvalid               = ~cpl_fifo_empty;
   assign m_axis_qdma_cpl_tdata[511:256]       = 0;
@@ -476,7 +478,6 @@ assign mult_result = 32'h0940*(qid_pidx & (reg_num_desc-1)) ; //2368*( packet_co
   assign qid_pidx=qid_packet_counter[15:0];
   assign full_queue= (qid_cidx==qid_pidx+1) || (qid_cidx==0 && qid_pidx==reg_num_desc-1); // full when next write will make cidx catch up with pidx
   
-  //assign full_queue= (qid_cidx-qid_pidx>0)? (qid_cidx-qid_pidx<3):(reg_num_desc+qid_cidx-qid_pidx-1<3);  
   
 
 endmodule: qdma_subsystem_c2h

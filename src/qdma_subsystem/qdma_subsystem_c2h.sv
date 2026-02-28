@@ -223,8 +223,8 @@ module qdma_subsystem_c2h #(
     .aclk          (axis_aclk),
     .aresetn       (axil_aresetn)
   );
-  //assign m_axis_qdma_c2h_tvalid = m_axis_qdma_c2h_tvalid_fifo_out; 
-  assign m_axis_qdma_c2h_tvalid = (!drop) & m_axis_qdma_c2h_tvalid_fifo_out;
+  assign m_axis_qdma_c2h_tvalid = m_axis_qdma_c2h_tvalid_fifo_out; //block
+  //assign m_axis_qdma_c2h_tvalid = (!drop) & m_axis_qdma_c2h_tvalid_fifo_out; //drop 
   always @(posedge axis_aclk) begin
     if (~axil_aresetn) begin
       m_axis_qdma_c2h_mty <= 0;
@@ -348,8 +348,8 @@ module qdma_subsystem_c2h #(
 
   assign cpl_fifo_wr_en = m_axis_qdma_c2h_tvalid && m_axis_qdma_c2h_tlast && m_axis_qdma_c2h_tready;
   assign cpl_fifo_din   = {axis_qdma_c2h_ctrl_qid, 16'(pkt_pld_id + 1), m_axis_qdma_c2h_ctrl_len};
-  //assign cpl_fifo_rd_en = m_axis_qdma_cpl_tvalid && m_axis_qdma_cpl_tready && !full_queue; // only read when the completion packet can be sent out (i.e. not blocked by full queue)
-  assign cpl_fifo_rd_en = m_axis_qdma_cpl_tvalid && m_axis_qdma_cpl_tready; 
+  assign cpl_fifo_rd_en = m_axis_qdma_cpl_tvalid && m_axis_qdma_cpl_tready && !full_queue; // block
+  //assign cpl_fifo_rd_en = m_axis_qdma_cpl_tvalid && m_axis_qdma_cpl_tready;  //drop 
 
   assign m_axis_qdma_cpl_tvalid               = ~cpl_fifo_empty;
   assign m_axis_qdma_cpl_tdata[511:256]       = 0;
@@ -410,7 +410,7 @@ end
 
 ////25B (pad) + 4B + 4B +3B +2B + 4B +8B +14 ETH      
 assign m_axis_qdma_c2h_tdata = (debug)? {debug_tdata[511:312], pkt_counter,qid_packet_counter,3'b0,packet_counter_ram_we,3'b0,qdma_c2h_bypass_enable,8'b0,1'b0,qdma_c2h_pfch_tag,5'b0, axis_qdma_c2h_ctrl_qid,reg_num_desc, qdma_c2h_pkt_addr + mult_result,debug_tdata[111:0]} : debug_tdata;
-assign mult_result = 32'h0940*(qid_pidx & (reg_num_desc-1)) ; //2368*( packet_counter % reg_num_desc)
+assign mult_result = 32'h0940*qid_pidx ; //2368*( packet_counter % reg_num_desc)
   
 
  xpm_fifo_sync #(
@@ -475,7 +475,7 @@ assign mult_result = 32'h0940*(qid_pidx & (reg_num_desc-1)) ; //2368*( packet_co
   assign qid_index_update = axis_qdma_c2h_ctrl_qid;
   
   assign byp_in_fifo_din = {qdma_c2h_pkt_addr + mult_result, pid, qid, qdma_c2h_func, qdma_c2h_pfch_tag};
-  assign qid_pidx=qid_packet_counter[15:0];
+  assign qid_pidx=qid_packet_counter[15:0] & (reg_num_desc-1);
   assign full_queue= (qid_cidx==qid_pidx+1) || (qid_cidx==0 && qid_pidx==reg_num_desc-1); // full when next write will make cidx catch up with pidx
   
   

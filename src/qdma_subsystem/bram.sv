@@ -19,6 +19,8 @@ module qid_packet_counter #(
     wire [ADDR_WIDTH-1:0] addr;
     reg [DATA_WIDTH-1:0] ram [0:(1<<ADDR_WIDTH)-1];
     reg clear;
+    reg clear_clkb_ff1;
+    reg clear_clkb;
     reg [ADDR_WIDTH-1:0] internal_counter;
     
     
@@ -33,6 +35,16 @@ module qid_packet_counter #(
             if (wea)
                 clear = din[0];    
     end
+
+    always @(posedge clkb) begin
+        if (~rstn) begin
+            clear_clkb_ff1 = 0;
+            clear_clkb = 0;
+        end else begin
+            clear_clkb_ff1 = clear;
+            clear_clkb = clear_clkb_ff1;
+        end
+    end
     
     always @(posedge clkb) begin
         if (~rstn)
@@ -41,12 +53,12 @@ module qid_packet_counter #(
             internal_counter = internal_counter +1;                 
     end
     
-    assign addr= (clear) ? internal_counter : waddr; 
+    assign addr= (clear_clkb) ? internal_counter : waddr; 
     
     always @(posedge clkb) begin
         doutb = ram[addrb]; //Read first
-        if (web | clear)
-            ram[addr] = (clear)? 0 : ram[addr] + 1;
+        if (web | clear_clkb)
+            ram[addr] = (clear_clkb)? 0 : ram[addr] + 1;
     end
 
     

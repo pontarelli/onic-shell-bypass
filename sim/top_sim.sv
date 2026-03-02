@@ -273,7 +273,7 @@ parse_i
       .m_axis_qdma_c2h_ctrl_qid             (axis_qdma_c2h_ctrl_qid),
       .m_axis_qdma_c2h_ctrl_has_cmpt        (axis_qdma_c2h_ctrl_has_cmpt),
       .m_axis_qdma_c2h_mty                  (M0_AXIS_TKEEP[5:0]),
-      .m_axis_qdma_c2h_tready               (cpl_tready), //(M0_AXIS_TREADY),
+      .m_axis_qdma_c2h_tready               (byp_ready), //(M0_AXIS_TREADY),
 
       .m_axis_qdma_cpl_tvalid               (axis_qdma_cpl_tvalid),
       .m_axis_qdma_cpl_tdata                (axis_qdma_cpl_tdata),
@@ -288,7 +288,7 @@ parse_i
       .m_axis_qdma_cpl_ctrl_col_idx         (axis_qdma_cpl_ctrl_col_idx),
       .m_axis_qdma_cpl_ctrl_err_idx         (axis_qdma_cpl_ctrl_err_idx),
       .m_axis_qdma_cpl_ctrl_no_wrb_marker   (axis_qdma_cpl_ctrl_no_wrb_marker),
-      .m_axis_qdma_cpl_tready               (1'b1), //(axis_qdma_cpl_tready),
+      .m_axis_qdma_cpl_tready               (cpl_tready), //(axis_qdma_cpl_tready),
 
       .debug                               (debug),
       .qmask                               (qmask),
@@ -336,6 +336,7 @@ wire temp_ready;
 
 int unsigned randomNumber;
 wire cpl_tready;
+wire byp_ready;
 
 always_ff @(negedge rstn or posedge clk) begin
         if(~rstn) begin
@@ -344,7 +345,15 @@ always_ff @(negedge rstn or posedge clk) begin
             randomNumber = $urandom();
         end    
 end
-assign cpl_tready= (randomNumber %20)==0 ? 1'b0 : 1'b1; 
+
+assign cpl_tready= (randomNumber %19)==0 ? 1'b0 : 1'b1; 
+assign byp_ready = (randomNumber %13)==0 ? 1'b0 : 1'b1;
+
+always_ff @(posedge clk) begin
+    if (c2h_inst.m_axis_qdma_cpl_tvalid & c2h_inst.m_axis_qdma_cpl_tready)
+        $display(c2h_inst.m_axis_qdma_cpl_ctrl_wait_pld_pkt_id);
+end
+
 
 pcap_dumper
 #(

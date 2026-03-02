@@ -169,8 +169,16 @@ module qdma_subsystem_function_register (
     end
   end
 
-  assign q_base = reg_qconf[31:16];
-  assign num_q  = reg_qconf[15:0];
+  reg [31:0] reg_qconf_sync1;
+  reg [31:0] reg_qconf_sync2;
+
+  always @(posedge axis_aclk) begin
+    reg_qconf_sync1 <= reg_qconf;
+    reg_qconf_sync2 <= reg_qconf_sync1;
+  end
+
+  assign q_base = reg_qconf_sync2[31:16];
+  assign num_q  = reg_qconf_sync2[15:0];
 
   generate for (genvar i = 0; i < 128; i++) begin
     always @(posedge axil_aclk) begin

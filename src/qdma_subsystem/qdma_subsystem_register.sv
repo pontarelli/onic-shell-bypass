@@ -80,7 +80,7 @@ module qdma_subsystem_register (
   input            external_packet_counter_ram_we,
   output    [31:0] external_qid_packet_counter,
   
-  output reg        reg_debug,
+  output reg [31:0] reg_debug,
   output reg        reg_fence,
   output reg [10:0] reg_qmask,
 
@@ -126,8 +126,6 @@ module qdma_subsystem_register (
   wire         [31:0] reg_din;
   reg          [31:0] reg_dout;
   wire         [31:0] register_dout;
-  wire [31:0] packet_counter_ram_rdata;
-
   
   // Check if the input address is in the range of the "queue" ram or "packet counter" ram 
   assign address_in_qid_ram_range = (reg_addr[C_ADDR_W-1:0] >= 12'h400 && reg_addr[C_ADDR_W-1:0] < 12'h410);

@@ -264,7 +264,7 @@ module qdma_subsystem #(
   wire         c2h_byp_in_st_csh_rdy;
 
   wire             fence;
-  wire             debug;
+  wire      [31:0] debug;
   wire      [10:0] qmask;
   wire      [10:0] qid_index;
   wire      [10:0] qid_index_update;

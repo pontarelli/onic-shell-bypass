@@ -56,9 +56,10 @@ module qid_packet_counter #(
     assign addr= (clear_clkb) ? internal_counter : waddr; 
     
     always @(posedge clkb) begin
-        doutb = ram[addrb]; //Read first
         if (web | clear_clkb)
             ram[addr] = (clear_clkb)? 0 : ram[addr] + 1;
+        doutb = ram[addrb]; //write first
+            
     end
 
     

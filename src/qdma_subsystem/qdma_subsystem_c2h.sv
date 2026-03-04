@@ -138,7 +138,7 @@ module qdma_subsystem_c2h #(
   reg [63:0]  qdma_c2h_pkt_addr;
   wire  [7:0]  qdma_c2h_func;
   wire  [6:0]  qdma_c2h_pfch_tag; 
-  
+  wire         qdma_c2h_bypass_enable;
   reg [10:0] qid;
   reg [2:0]  pid;
   
@@ -486,6 +486,12 @@ assign mult_result = (qid_pidx << 11) + (qid_pidx << 8) + (qid_pidx << 6); // fo
   wire low, mid; //, high;
   wire qid_pidx_256_aligned;
   
+  //wire [10:0] pidx_masked;
+  //wire [10:0] cidx_masked;
+  //assign pidx_masked = {qid_pidx[10:8],8'h00};
+  //assign cidx_masked = qid_cidx[10:0];
+  //assign level = (pidx_masked>cidx_masked)? (pidx_masked-cidx_masked) : (pidx_masked+reg_num_desc-(cidx_masked+1));
+  
   assign level = (qid_pidx[10:0]>qid_cidx[10:0])? (qid_pidx[10:0]-qid_cidx[10:0]) : (qid_pidx[10:0]+reg_num_desc-1-qid_cidx[10:0]);
   assign low = (level<64);          // --> set ring size to 256
   assign mid = ~low && (level<128); // --> set ring size to 512
@@ -497,7 +503,6 @@ assign mult_result = (qid_pidx << 11) + (qid_pidx << 8) + (qid_pidx << 6); // fo
   
 
   assign full_queue= (qid_cidx[10:0]==qid_pidx[10:0]+1) || (qid_cidx[10:0]==0 && qid_pidx[10:0]==(reg_num_desc-1)); // full when next write will make cidx catch up with pidx
-  //assign full_queue= (qid_cidx[10:0]>qid_pidx[10:0])? (qid_cidx[10:0]-qid_pidx[10:0]<16): (qid_cidx[10:0]+reg_num_desc-qid_pidx[10:0]<16); // full when distance between cidx and pidx is less than 4
   
   assign qid_index_update = axis_qdma_c2h_ctrl_qid; //2
   assign packet_counter_ram_we = qdma_c2h_bypass_enable && m_axis_qdma_c2h_tlast && m_axis_qdma_c2h_tvalid && m_axis_qdma_c2h_tready; //2
@@ -505,27 +510,4 @@ assign mult_result = (qid_pidx << 11) + (qid_pidx << 8) + (qid_pidx << 6); // fo
   assign byp_in_fifo_din = {qdma_c2h_pkt_addr + mult_result, m_axis_qdma_c2h_ctrl_port_id, axis_qdma_c2h_ctrl_qid, qdma_c2h_func, qdma_c2h_pfch_tag}; //2
   assign byp_in_fifo_wr_en =packet_counter_ram_we; //2
 
-/*  
-  assign packet_counter_ram_we = qdma_c2h_bypass_enable && m_axis_qdma_c2h_tlast && m_axis_qdma_c2h_tvalid && m_axis_qdma_c2h_tready;
-  always@(posedge axis_aclk) begin
-    if (~axil_aresetn) begin
-      byp_in_fifo_wr_en = 1'b0;
-      qid = 11'b0;
-      pid = 3'b0;
-    end
-    else begin
-      qid = m_axis_qdma_c2h_ctrl_qid; 
-      pid = m_axis_qdma_c2h_ctrl_port_id;
-      byp_in_fifo_wr_en = packet_counter_ram_we;
-    end
-  end
-  assign m_axis_qdma_c2h_ctrl_qid = axis_qdma_c2h_ctrl_qid & qmask;
-  assign qid_index = axis_qdma_c2h_ctrl_qid; //axis_c2h_tuser_qid (1cc before)
-  assign qid_index_update = axis_qdma_c2h_ctrl_qid;
-  
-  assign byp_in_fifo_din = {qdma_c2h_pkt_addr + mult_result, pid, qid, qdma_c2h_func, qdma_c2h_pfch_tag};
-  assign qid_pidx=qid_packet_counter[15:0] & (reg_num_desc-1);
-  //assign full_queue= (qid_cidx==qid_pidx+1) || (qid_cidx==0 && qid_pidx==reg_num_desc-1); // full when next write will make cidx catch up with pidx
-  
-*/
 endmodule: qdma_subsystem_c2h

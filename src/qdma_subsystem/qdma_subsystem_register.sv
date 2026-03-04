@@ -78,6 +78,8 @@ module qdma_subsystem_register (
   output   [127:0] external_qid_data,
   
   input            external_packet_counter_ram_we,
+  input            external_packet_counter_ram_we256,
+  input            external_packet_counter_ram_we512,
   output    [31:0] external_qid_packet_counter,
   
   output reg [31:0] reg_debug,
@@ -172,6 +174,8 @@ module qdma_subsystem_register (
     .douta (packet_counter_ram_douta),
     .clkb  (axis_aclk),
     .web   (external_packet_counter_ram_we),
+    .web256(external_packet_counter_ram_we256),
+    .web512(external_packet_counter_ram_we512),
     .waddr (external_qid_index_update),
     .addrb (external_qid_index),
     .doutb (external_qid_packet_counter)

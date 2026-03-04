@@ -269,6 +269,8 @@ module qdma_subsystem #(
   wire      [10:0] qid_index;
   wire      [10:0] qid_index_update;
   wire             packet_counter_ram_we;
+  wire             packet_counter_ram_we256;
+  wire             packet_counter_ram_we512;
   wire      [31:0] qid_packet_counter;
   wire     [127:0] qid_data;
   wire      [31:0] full_counter;
@@ -745,6 +747,8 @@ module qdma_subsystem #(
       .external_qid_index(qid_index),
       .external_qid_index_update(qid_index_update),
       .external_packet_counter_ram_we(packet_counter_ram_we),
+      .external_packet_counter_ram_we256(packet_counter_ram_we256),
+      .external_packet_counter_ram_we512(packet_counter_ram_we512),
       .external_qid_packet_counter(qid_packet_counter),
       .external_qid_data(qid_data),
       .pkt_counter(pkt_counter),
@@ -831,6 +835,8 @@ module qdma_subsystem #(
       .qid_data                            (qid_data),
        
       .packet_counter_ram_we               (packet_counter_ram_we),
+      .packet_counter_ram_we256            (packet_counter_ram_we256),
+      .packet_counter_ram_we512            (packet_counter_ram_we512),
       .qid_packet_counter                  (qid_packet_counter),
 
 

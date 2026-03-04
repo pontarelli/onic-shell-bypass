@@ -2,7 +2,7 @@ module qid_packet_counter #(
     parameter ADDR_WIDTH = 11,
     parameter DATA_WIDTH = 32
   ) 
-(rstn,clka,clkb, wea,web,addra,addrb,waddr,din,douta,doutb);
+(rstn,clka,clkb, wea,web,web256,web512,addra,addrb,waddr,din,douta,doutb);
     
     input [ADDR_WIDTH-1:0] addra;
     input clka;
@@ -13,6 +13,8 @@ module qid_packet_counter #(
     input clkb;
     input rstn;
     input web;
+    input web256;
+    input web512;
     input [ADDR_WIDTH-1:0] addrb;
     input [ADDR_WIDTH-1:0] waddr;
     output reg [DATA_WIDTH-1:0] doutb;
@@ -56,8 +58,16 @@ module qid_packet_counter #(
     assign addr= (clear_clkb) ? internal_counter : waddr; 
     
     always @(posedge clkb) begin
-        if (web | clear_clkb)
-            ram[addr] = (clear_clkb)? 0 : ram[addr] + 1;
+        if (clear_clkb)
+            ram[addr] = 0;
+        else if (web) begin
+                if (web512)
+                    ram[addr] = ram[addr] - 511;
+                else if (web256)
+                    ram[addr] = ram[addr] - 255;
+                else
+                    ram[addr] = ram[addr] + 1;
+        end
         doutb = ram[addrb]; //write first
             
     end

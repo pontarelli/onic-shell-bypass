@@ -22,7 +22,7 @@ module pcap_parse #(
     output reg  [    AXIS_WIDTH-1:0] data =  {AXIS_WIDTH{1'b0}}   , //       .data
     output reg  [(AXIS_WIDTH/8)-1:0] strb        , //       .strb
     output reg  [              47:0] len         , //       .len
-    output reg  [              10:0] qid         , //       .qid
+    //output reg  [              10:0] qid         , //       .qid
     input  wire                      ready       , //       .ready
     output reg                       valid       , //       .valid
     output reg                       eop         , //       .endofpacket
@@ -132,7 +132,7 @@ module pcap_parse #(
                 end
             end
             len =pktSz;
-            qid = timestamp_lsb[10:0] & 11'h0; // assign the qid as the least significant 11 bits of the timestamp, just for testing purposes
+            //qid = timestamp_lsb[10:0] & 11'h0; // assign the qid as the least significant 11 bits of the timestamp, just for testing purposes
         end
     endtask : readPacket
 
@@ -160,7 +160,7 @@ module pcap_parse #(
         pause_ifg = 0;
         state_ifg = 0;
         current_loop = 0;
-        qid = 0;
+        //qid = 0;
 
         // open pcap file
         if (pcap_filename == "none") begin

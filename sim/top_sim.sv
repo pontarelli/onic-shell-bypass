@@ -143,11 +143,13 @@ initial begin
     #10us
     axi_write(addr,0);
     #400ns
-            
+
+    //qid=0            
     addr =32'hFF0;
     axi_write(addr,0);
     #400ns
     
+    //phys_addr
     addr =32'h400;
     axi_write(addr,0);
     #400ns
@@ -163,6 +165,51 @@ initial begin
     addr =32'h40C;
     axi_write(addr,128); //valid + tag=0
     #400ns
+    
+    //qid=1            
+    addr =32'hFF0;
+    axi_write(addr,1);
+    #400ns
+    
+    //phys_addr
+    addr =32'h400;
+    axi_write(addr,32'hbeba0000);
+    #400ns
+    
+    addr =32'h404;
+    axi_write(addr,0);
+    #400ns
+    
+    addr =32'h408; 
+    axi_write(addr,1024); //num_desc
+    #400ns
+    
+    addr =32'h40C;
+    axi_write(addr,129); //valid + tag=1
+    #400ns
+    
+    //qid=2            
+    addr =32'hFF0;
+    axi_write(addr,2);
+    #400ns
+    
+    //phys_addr
+    addr =32'h400;
+    axi_write(addr,32'hdead0000);
+    #400ns
+    
+    addr =32'h404;
+    axi_write(addr,0);
+    #400ns
+    
+    addr =32'h408; 
+    axi_write(addr,1024); //num_desc
+    #400ns
+    
+    addr =32'h40C;
+    axi_write(addr,130); //valid + tag=2
+    #400ns
+    
     pause= 1'b0;
     
     
@@ -174,12 +221,14 @@ initial begin
 end 
 
   wire             fence;
-  wire             debug;
+  wire      [31:0] debug;
   wire      [10:0] qid;
   wire      [10:0] qmask;
   wire      [10:0] qid_index;
   wire      [10:0] qid_index_update;
   wire             packet_counter_ram_we;
+  wire             packet_counter_ram_we256;
+  wire             packet_counter_ram_we512;
   wire      [31:0] qid_packet_counter;
   wire     [127:0] qid_data;
   wire      [31:0] full_counter;
@@ -187,6 +236,21 @@ end
   wire                         c2h_status_valid;
   wire                  [15:0] c2h_status_bytes;
   wire                   [1:0] c2h_status_func_id;
+  
+  
+  wire [511:0] temp_data;
+  wire [63:0] temp_keep;
+  wire [10:0] temp_qid;
+  wire [10:0] temp_qidp1;
+  wire [10:0] temp_size;
+  wire temp_valid;
+  wire temp_last;
+  wire temp_ready;
+  wire cpl_tready;
+  wire byp_ready;
+  wire [63:0] c2h_byp_in_st_csh_addr;
+  wire [31:0] phys_addrL;
+  wire [31:0] phys_addrH;
    
 pcap_parse
 #(
@@ -204,13 +268,76 @@ parse_i
     .ready          (S0_AXIS_TREADY                                                                ),
     .valid          (S0_AXIS_TVALID                                                                ),
     .len            (S0_AXIS_TUSER                                                                 ),
-    .qid            (qid                                                                           ),
+    //.qid            (qid                                                                           ),
     .eop            (S0_AXIS_TLAST                                                                 ),
     .clk            (clk         	                                                               ),
     .pktcount       (tx_pktcount_1                                                                 ),
     .pcapfinished   (pcapfinished_1	                                                               ) 
 
 );
+
+  qdma_subsystem_function #(
+        .FUNC_ID     (0),
+        .QDMA_ID     (0),
+        .MAX_PKT_LEN (1518),
+        .MIN_PKT_LEN (64)
+      ) func_inst (
+        .s_axil_awvalid        (1'b0),
+        .s_axil_awaddr         (32'd0),
+        .s_axil_awready        (),
+        .s_axil_wvalid         (1'b0),
+        .s_axil_wdata          (32'd0),
+        .s_axil_wready         (),
+        .s_axil_bvalid         (),
+        .s_axil_bresp          (),
+        .s_axil_bready         (1'b0),
+        .s_axil_arvalid        (1'b0),
+        .s_axil_araddr         (32'd0),
+        .s_axil_arready        (),
+        .s_axil_rvalid         (),
+        .s_axil_rdata          (),
+        .s_axil_rresp          (),
+        .s_axil_rready         (1'b0),
+
+        .s_axis_h2c_tvalid     (1'b0),
+        .s_axis_h2c_tdata      ({512{1'b0}}),
+        .s_axis_h2c_tlast      (1'b0),
+        .s_axis_h2c_tuser_size (16'd0),
+        .s_axis_h2c_tuser_qid  (11'd0),
+        .s_axis_h2c_tready     (),
+
+        .m_axis_h2c_tvalid     (),
+        .m_axis_h2c_tdata      (),
+        .m_axis_h2c_tkeep      (),
+        .m_axis_h2c_tlast      (),
+        .m_axis_h2c_tuser_size (),
+        .m_axis_h2c_tuser_src  (),
+        .m_axis_h2c_tuser_dst  (),
+        .m_axis_h2c_tready     (1'b0),
+
+        .s_axis_c2h_tvalid     (S0_AXIS_TVALID),
+        .s_axis_c2h_tdata      (S0_AXIS_TDATA),
+        .s_axis_c2h_tkeep      (S0_AXIS_TKEEP),
+        .s_axis_c2h_tlast      (S0_AXIS_TLAST),
+        .s_axis_c2h_tuser_size (S0_AXIS_TUSER[15:0]),
+        .s_axis_c2h_tuser_src  (16'd0),
+        .s_axis_c2h_tuser_dst  (16'd0),
+        .s_axis_c2h_tready     (S0_AXIS_TREADY),
+
+        .m_axis_c2h_tvalid     (temp_valid),
+        .m_axis_c2h_tdata      (temp_data),
+        .m_axis_c2h_tlast      (temp_last),
+        .m_axis_c2h_tuser_size (temp_size),
+        .m_axis_c2h_tuser_qid  (temp_qid),
+        .m_axis_c2h_tready     (temp_ready),
+
+        .axil_aclk             (clk),
+        .axis_aclk             (clk),
+        .axis_master_aclk      (clk),
+        .axil_aresetn          (rstn)
+        
+      );
+
 
   
 
@@ -240,6 +367,8 @@ parse_i
       .external_qid_index(qid_index),
       .external_qid_index_update(qid_index_update),
       .external_packet_counter_ram_we(packet_counter_ram_we),
+      .external_packet_counter_ram_we256(packet_counter_ram_we256),
+      .external_packet_counter_ram_we512(packet_counter_ram_we512),
       .external_qid_packet_counter(qid_packet_counter),
       .external_qid_data(qid_data),
       .pkt_counter(pkt_counter),
@@ -250,17 +379,17 @@ parse_i
       .axil_aresetn   (rstn)
     );
 
-
+assign temp_qidp1 =temp_qid +1;
 
     qdma_subsystem_c2h #(
       .NUM_PHYS_FUNC (1)
     ) c2h_inst (
-      .s_axis_c2h_tvalid                    (S0_AXIS_TVALID),
-      .s_axis_c2h_tdata                     (S0_AXIS_TDATA),
-      .s_axis_c2h_tlast                     (S0_AXIS_TLAST),
-      .s_axis_c2h_tuser_size                (S0_AXIS_TUSER[15:0]),
-      .s_axis_c2h_tuser_qid                 (qid),
-      .s_axis_c2h_tready                    (S0_AXIS_TREADY),
+      .s_axis_c2h_tvalid                    (temp_valid),
+      .s_axis_c2h_tdata                     (temp_data),
+      .s_axis_c2h_tlast                     (temp_last),
+      .s_axis_c2h_tuser_size                (temp_size),
+      .s_axis_c2h_tuser_qid                 (temp_qidp1),
+      .s_axis_c2h_tready                    (temp_ready),
 
       .m_axis_qdma_c2h_tvalid               (M0_AXIS_TVALID),
       .m_axis_qdma_c2h_tdata                (M0_AXIS_TDATA),
@@ -298,6 +427,9 @@ parse_i
       .qid_data                            (qid_data),
        
       .packet_counter_ram_we               (packet_counter_ram_we),
+      .packet_counter_ram_we256            (packet_counter_ram_we256),
+      .packet_counter_ram_we512            (packet_counter_ram_we512),
+      
       .qid_packet_counter                  (qid_packet_counter),
 
 
@@ -321,22 +453,16 @@ parse_i
       .axil_aresetn                         (rstn)
     );
 
+assign phys_addrL = c2h_byp_in_st_csh_addr[31:0];
+assign phys_addrH = c2h_byp_in_st_csh_addr[63:32];
 
 //assign S0_AXIS_TUSER=32'b0;
 /*
-wire [511:0] temp_data;
-wire [63:0] temp_keep;
-wire [47:0]temp_user;
-wire temp_valid;
-wire temp_last;
-wire temp_ready;
 */
 
 //assign M0_AXIS_TREADY= (randomNumber %2)==0 ? 1'b0 : 1'b1;
 
 int unsigned randomNumber;
-wire cpl_tready;
-wire byp_ready;
 
 always_ff @(negedge rstn or posedge clk) begin
         if(~rstn) begin
@@ -374,3 +500,4 @@ AXIS_SINK_PCIE
 
 
 endmodule;
+

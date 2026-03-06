@@ -144,6 +144,12 @@ initial begin
     axi_write(addr,0);
     #400ns
 
+    //DEBUG= 4
+    addr =32'h148;
+    axi_write(addr,4);
+    #400ns
+
+       
     //qid=0            
     addr =32'hFF0;
     axi_write(addr,0);
@@ -151,7 +157,7 @@ initial begin
     
     //phys_addr
     addr =32'h400;
-    axi_write(addr,0);
+    axi_write(addr,32'hbeba0000);
     #400ns
     
     addr =32'h404;
@@ -166,6 +172,7 @@ initial begin
     axi_write(addr,128); //valid + tag=0
     #400ns
     
+    /*
     //qid=1            
     addr =32'hFF0;
     axi_write(addr,1);
@@ -173,7 +180,7 @@ initial begin
     
     //phys_addr
     addr =32'h400;
-    axi_write(addr,32'hbeba0000);
+    axi_write(addr,32'hcafea0000);
     #400ns
     
     addr =32'h404;
@@ -209,12 +216,13 @@ initial begin
     addr =32'h40C;
     axi_write(addr,130); //valid + tag=2
     #400ns
+    */
     
     pause= 1'b0;
     
     
-    #100us
-    axi_write(addr,1008*256+128); //cidx=1021 + valid + tag=0 
+    #3.25us
+    axi_write(addr,745*256+128); //cidx=500 + valid + tag=0 
     
     //$display("data is %d",data);
         
@@ -222,7 +230,6 @@ end
 
   wire             fence;
   wire      [31:0] debug;
-  wire      [10:0] qid;
   wire      [10:0] qmask;
   wire      [10:0] qid_index;
   wire      [10:0] qid_index_update;
@@ -241,7 +248,7 @@ end
   wire [511:0] temp_data;
   wire [63:0] temp_keep;
   wire [10:0] temp_qid;
-  wire [10:0] temp_qidp1;
+  //wire [10:0] temp_qidp1;
   wire [10:0] temp_size;
   wire temp_valid;
   wire temp_last;
@@ -379,7 +386,7 @@ parse_i
       .axil_aresetn   (rstn)
     );
 
-assign temp_qidp1 =temp_qid +1;
+//assign temp_qidp1 =temp_qid +1;
 
     qdma_subsystem_c2h #(
       .NUM_PHYS_FUNC (1)
@@ -388,7 +395,7 @@ assign temp_qidp1 =temp_qid +1;
       .s_axis_c2h_tdata                     (temp_data),
       .s_axis_c2h_tlast                     (temp_last),
       .s_axis_c2h_tuser_size                (temp_size),
-      .s_axis_c2h_tuser_qid                 (temp_qidp1),
+      .s_axis_c2h_tuser_qid                 (temp_qid),
       .s_axis_c2h_tready                    (temp_ready),
 
       .m_axis_qdma_c2h_tvalid               (M0_AXIS_TVALID),

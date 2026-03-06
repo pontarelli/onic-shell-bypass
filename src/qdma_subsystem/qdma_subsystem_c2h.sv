@@ -492,7 +492,7 @@ assign mult_result = (qid_pidx << 11) + (qid_pidx << 8) + (qid_pidx << 6); // fo
   //assign cidx_masked = qid_cidx[10:0];
   //assign level = (pidx_masked>cidx_masked)? (pidx_masked-cidx_masked) : (pidx_masked+reg_num_desc-(cidx_masked+1));
   
-  assign level = (qid_pidx[10:0]>qid_cidx[10:0])? (qid_pidx[10:0]-qid_cidx[10:0]) : (qid_pidx[10:0]+reg_num_desc-1-qid_cidx[10:0]);
+  assign level = (qid_pidx[10:0]>=qid_cidx[10:0])? (qid_pidx[10:0]-qid_cidx[10:0]) : (qid_pidx[10:0]+reg_num_desc-1-qid_cidx[10:0]);
   assign low = (level<64);          // --> set ring size to 256
   assign mid = ~low && (level<128); // --> set ring size to 512
   //assign high = ~low && ~mid;       // --> set ring size to 1024

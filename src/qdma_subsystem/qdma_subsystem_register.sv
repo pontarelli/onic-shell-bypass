@@ -48,7 +48,7 @@
 //     0C -     0F |  RW  | {qid_cidx,qdma_c2h_bypass_enable,qdma_c2h_pfch_tag}
 //     10 -     13 |  RW  | qid_packet_counter
 //     14 -     FF |   -  | RESERVED
-// 0x4FF0          |  RW  | REG_RAM_INDIR_ADDR (QID)
+// 0x5FF0          |  RW  | REG_RAM_INDIR_ADDR (QID)
 // -----------------------------------------------------------------------------
 
 

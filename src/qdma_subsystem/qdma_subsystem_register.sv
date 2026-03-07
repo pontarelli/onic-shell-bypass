@@ -112,6 +112,12 @@ module qdma_subsystem_register (
 
 
   reg [31:0] qid_page_index;
+  reg        reg_fence_axil;
+  reg        reg_fence_axis_ff1;
+  reg [31:0] reg_debug_axil;
+  reg [31:0] reg_debug_axis_ff1;
+  reg [10:0] reg_qmask_axil;
+  reg [10:0] reg_qmask_axil_ff1;
 
   wire [31:0] qid_ram_douta;
   wire [14:0] qid_ram_addr;
@@ -231,7 +237,7 @@ module qdma_subsystem_register (
             reg_dout <= MODULE_ID;
         end
         REG_DEBUG: begin
-            reg_dout <= reg_debug;
+            reg_dout <= reg_debug_axil;
         end
         REG_RAM_INDIR_ADDR: begin
             reg_dout <= qid_page_index;
@@ -240,10 +246,10 @@ module qdma_subsystem_register (
             reg_dout <= full_counter;
         end
         REG_QMASK: begin
-            reg_dout <= reg_qmask;
+            reg_dout <= reg_qmask_axil;
         end
         REG_FENCE: begin
-            reg_dout <= reg_fence;
+          reg_dout <= reg_fence_axil;
         end
         default: begin
                 reg_dout <= 32'hDEADBEEF;
@@ -254,28 +260,51 @@ module qdma_subsystem_register (
   
   always @(posedge axil_aclk) begin
     if (~axil_aresetn) begin
-        reg_debug <= 0;
-        reg_qmask <= 11'h7ff;
-        reg_fence <= 0;
+        reg_debug_axil <= 0;
+        reg_qmask_axil <= 11'h7ff;
+        reg_fence_axil <= 0;
     end else begin
         if (reg_en && reg_we) begin
             case (reg_addr)
                 REG_DEBUG: begin
-                    reg_debug <= reg_din;
+                    reg_debug_axil <= reg_din;
                 end
                 REG_RAM_INDIR_ADDR: begin
                     qid_page_index <= reg_din;
                 end
                 REG_QMASK: begin
-                    reg_qmask <= reg_din;
+                    reg_qmask_axil <= reg_din;
                 end
                 REG_FENCE: begin
-                    reg_fence <= reg_din;
+                    reg_fence_axil <= reg_din;
                 end
                 default: begin
                 end
             endcase
         end
+    end
+  end
+
+  // Synchronize fence control from AXI-Lite clock domain into AXIS clock domain.
+  always @(posedge axis_aclk) begin
+    if (~axil_aresetn) begin
+      reg_fence_axis_ff1 <= 0;
+      reg_fence <= 0;
+      reg_debug_axis_ff1 <= 0;
+      reg_debug <= 0;
+      reg_qmask_axil_ff1 <= 11'h7ff;
+      reg_qmask <= 11'h7ff;
+    end else begin
+      reg_fence_axis_ff1 <= reg_fence_axil;
+      reg_fence <= reg_fence_axis_ff1;
+      
+      reg_debug_axis_ff1 <= reg_debug_axil;
+      reg_debug <= reg_debug_axis_ff1;
+      
+      reg_qmask_axil_ff1 <= reg_qmask_axil;
+      reg_qmask <= reg_qmask_axil_ff1;
+      
+
     end
   end
 

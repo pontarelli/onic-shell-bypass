@@ -493,9 +493,9 @@ assign mult_result = (qid_pidx << 11) + (qid_pidx << 8) + (qid_pidx << 6); // fo
   //assign level = (pidx_masked>cidx_masked)? (pidx_masked-cidx_masked) : (pidx_masked+reg_num_desc-(cidx_masked+1));
   
   assign level = (qid_pidx[10:0]>=qid_cidx[10:0])? (qid_pidx[10:0]-qid_cidx[10:0]) : (qid_pidx[10:0]+reg_num_desc-1-qid_cidx[10:0]);
-  assign low = (level<64);          // --> set ring size to 256
-  assign mid = ~low && (level<128); // --> set ring size to 512
-  //assign high = ~low && ~mid;       // --> set ring size to 1024
+  assign low = ~(|level[10:6]);             //(level<64);      // --> set ring size to 256
+  assign mid =  level[6] & ~(|level[10:7]); //(64<=level<128); // --> set ring size to 512
+  //assign high = ~low && ~mid;                                // --> set ring size to 1024
   
   assign qid_pidx_256_aligned = ~(|qid_pidx[7:0]);
   assign packet_counter_ram_we256 = debug[2] && low && qid_pidx_256_aligned; //ring only update when pidx is 256 aligned

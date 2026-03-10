@@ -83,7 +83,7 @@ module qdma_subsystem_c2h #(
   output                   [6:0] c2h_byp_in_st_csh_pfch_tag,
   input                          c2h_byp_in_st_csh_rdy,
   
-  output reg             [31:0] timestamp;
+  output reg             [31:0] timestamp,
   output                        c2h_status_valid,
   output                 [15:0] c2h_status_bytes,
   output reg              [1:0] c2h_status_func_id,

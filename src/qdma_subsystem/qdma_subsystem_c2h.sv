@@ -83,6 +83,7 @@ module qdma_subsystem_c2h #(
   output                   [6:0] c2h_byp_in_st_csh_pfch_tag,
   input                          c2h_byp_in_st_csh_rdy,
   
+  output reg             [31:0] timestamp;
   output                        c2h_status_valid,
   output                 [15:0] c2h_status_bytes,
   output reg              [1:0] c2h_status_func_id,
@@ -411,8 +412,10 @@ always@(posedge axis_aclk) begin
   if (~axil_aresetn) begin
     pkt_counter <= 32'd1;
     full_counter <= 0;
+    timestamp <= 0;
   end
   else begin
+    timestamp = timestamp + 1; 
     pkt_counter = pkt_counter +(m_axis_qdma_c2h_tlast && m_axis_qdma_c2h_tvalid && m_axis_qdma_c2h_tready);
     if (full_queue) begin
         full_counter[15:0]  <= full_counter[15:0] + (m_axis_qdma_c2h_tlast && m_axis_qdma_c2h_tvalid_fifo_out && m_axis_qdma_c2h_tready);  
@@ -422,7 +425,7 @@ always@(posedge axis_aclk) begin
 end
 
 ////25B (pad) + 4B + 4B +3B +2B + 4B +8B +14 ETH      
-assign m_axis_qdma_c2h_tdata = (debug[0])? {debug_tdata[511:312], pkt_counter,qid_packet_counter,3'b0,packet_counter_ram_we,3'b0,qdma_c2h_bypass_enable,8'b0,1'b0,qdma_c2h_pfch_tag,5'b0, axis_qdma_c2h_ctrl_qid,reg_num_desc, qdma_c2h_pkt_addr + mult_result,debug_tdata[111:0]} : debug_tdata;
+assign m_axis_qdma_c2h_tdata = (debug[0])? {debug_tdata[511:344],timestamp, pkt_counter,qid_packet_counter,3'b0,packet_counter_ram_we,3'b0,qdma_c2h_bypass_enable,8'b0,1'b0,qdma_c2h_pfch_tag,5'b0, axis_qdma_c2h_ctrl_qid,reg_num_desc, qdma_c2h_pkt_addr + mult_result,debug_tdata[111:0]} : debug_tdata;
 //assign mult_result = 12'h940*qid_pidx ; //2368*( packet_counter % reg_num_desc)
 assign mult_result = (qid_pidx << 11) + (qid_pidx << 8) + (qid_pidx << 6); // for better timing, use shift add to replace multiply
   

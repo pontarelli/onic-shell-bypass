@@ -22,12 +22,9 @@ proc _do_impl {jobs {strategies ""}} {
     } else {
         set impl_runs "impl_1"
         set_property STRATEGY "[lindex $strategies 0]" [get_runs impl_1]
-	#set_property STEPS.OPT_DESIGN.ARGS.DIRECTIVE ExploreSequentialArea [get_runs impl_1]
-	#set_property STEPS.PLACE_DESIGN.ARGS.DIRECTIVE EarlyBlockPlacement [get_runs impl_1]
-	#set_property STEPS.PHYS_OPT_DESIGN.ARGS.DIRECTIVE AggressiveExplore [get_runs impl_1]
-	#set_property STEPS.ROUTE_DESIGN.ARGS.DIRECTIVE NoTimingRelaxation [get_runs impl_1]
-	#set_property STEPS.POST_ROUTE_PHYS_OPT_DESIGN.IS_ENABLED true [get_runs impl_1]
-	#set_property STEPS.POST_ROUTE_PHYS_OPT_DESIGN.ARGS.DIRECTIVE AggressiveExplore [get_runs impl_1]
+	set_property STEPS.ROUTE_DESIGN.ARGS.DIRECTIVE AggressiveExplore [get_runs impl_1] 
+	set_property STEPS.POST_ROUTE_PHYS_OPT_DESIGN.IS_ENABLED true [get_runs impl_1]
+	set_property STEPS.POST_ROUTE_PHYS_OPT_DESIGN.ARGS.DIRECTIVE AggressiveExplore [get_runs impl_1]
         for {set i 1} {$i < [llength $strategies]} {incr i 1} {
             set r impl_[expr $i + 1]
             set s [lindex $strategies $i]
@@ -456,10 +453,12 @@ set_property STRATEGY Flow_PerfOptimized_high [get_runs synth_1]
 # Implement design
 if {$impl} {
     update_compile_order -fileset sources_1
-    _do_impl $jobs {"Performance_ExtraTimingOpt"}
-    #_do_impl $jobs {"Performance_ExplorePostRoutePhysOpt"}
+    _do_impl $jobs {["Performance_ExtraTimingOpt"}
+    #_do_impl $jobs {"Performance_WLBlockPlacementFanoutOpt"} #per au55n
 }
 
 if {$post_impl} {
     _do_post_impl $top_build_dir $top impl_1 $zynq_family ${board}
 }
+
+

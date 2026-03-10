@@ -275,6 +275,8 @@ module qdma_subsystem #(
   wire     [127:0] qid_data;
   wire      [31:0] full_counter;
   wire      [31:0] pkt_counter;
+  wire      [31:0] timestamp;
+  wire      [31:0] axis_qdma_h2c_tdata_stamped;
     
   wire         axil_aresetn;
   
@@ -763,7 +765,7 @@ module qdma_subsystem #(
       .NUM_PHYS_FUNC (NUM_PHYS_FUNC)
     ) h2c_inst (
       .s_axis_qdma_h2c_tvalid          (axis_qdma_h2c_tvalid),
-      .s_axis_qdma_h2c_tdata           (axis_qdma_h2c_tdata),
+      .s_axis_qdma_h2c_tdata           (axis_qdma_h2c_tdata_stamped),
       .s_axis_qdma_h2c_tcrc            (axis_qdma_h2c_tcrc),
       .s_axis_qdma_h2c_tlast           (axis_qdma_h2c_tlast),
       .s_axis_qdma_h2c_tuser_qid       (axis_qdma_h2c_tuser_qid),
@@ -788,6 +790,8 @@ module qdma_subsystem #(
       .axis_aclk                       (axis_aclk),
       .axil_aresetn                    (axil_aresetn)
     );
+    
+    assign axis_qdma_h2c_tdata_stamped = (debug[0])? {axis_qdma_h2c_tdata[511:376],timestamp,axis_qdma_h2c_tdata[343:0]} : axis_qdma_h2c_tdata;
 
     qdma_subsystem_c2h #(
       .NUM_PHYS_FUNC (NUM_PHYS_FUNC)
@@ -852,6 +856,7 @@ module qdma_subsystem #(
       .pkt_counter(pkt_counter),
       .full_counter(full_counter),
       
+      .timestamp                            (timestamp),
       .c2h_status_valid                     (c2h_status_valid),
       .c2h_status_bytes                     (c2h_status_bytes),
       .c2h_status_func_id                   (c2h_status_func_id),

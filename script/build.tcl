@@ -453,7 +453,7 @@ set_property STRATEGY Flow_PerfOptimized_high [get_runs synth_1]
 # Implement design
 if {$impl} {
     update_compile_order -fileset sources_1
-    _do_impl $jobs {["Performance_ExtraTimingOpt"}
+    _do_impl $jobs {"Performance_ExtraTimingOpt"}
     #_do_impl $jobs {"Performance_WLBlockPlacementFanoutOpt"} #per au55n
 }
 

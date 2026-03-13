@@ -276,7 +276,7 @@ module qdma_subsystem #(
   wire      [31:0] full_counter;
   wire      [31:0] pkt_counter;
   wire      [31:0] timestamp;
-  wire      [31:0] axis_qdma_h2c_tdata_stamped;
+  wire      [511:0] axis_qdma_h2c_tdata_stamped;
     
   wire         axil_aresetn;
   

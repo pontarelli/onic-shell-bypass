@@ -116,17 +116,43 @@ module packet_adapter_register (
   localparam REG_RX_PKTS_ERR_UPPER   = 12'h044;
   localparam REG_RX_BYTES_ERR_LOWER  = 12'h048;
   localparam REG_RX_BYTES_ERR_UPPER  = 12'h04C;
+  // Synchronizer registers for crossing from axis_aclk to axil_aclk
+  reg [63:0] reg_tx_pkts_sent_axis, reg_tx_pkts_sent_axil;
+  reg [63:0] reg_tx_bytes_sent_axis, reg_tx_bytes_sent_axil;
+  reg [63:0] reg_tx_pkts_drop_axis, reg_tx_pkts_drop_axil;
+  reg [63:0] reg_tx_bytes_drop_axis, reg_tx_bytes_drop_axil;
+  reg [63:0] reg_rx_pkts_recv_axis, reg_rx_pkts_recv_axil;
+  reg [63:0] reg_rx_bytes_recv_axis, reg_rx_bytes_recv_axil;
+  reg [63:0] reg_rx_pkts_drop_axis, reg_rx_pkts_drop_axil;
+  reg [63:0] reg_rx_bytes_drop_axis, reg_rx_bytes_drop_axil;
+  reg [63:0] reg_rx_pkts_err_axis, reg_rx_pkts_err_axil;
+  reg [63:0] reg_rx_bytes_err_axis, reg_rx_bytes_err_axil;
 
-  reg          [63:0] reg_tx_pkts_sent;
-  reg          [63:0] reg_tx_bytes_sent;
-  reg          [63:0] reg_tx_pkts_drop;
-  reg          [63:0] reg_tx_bytes_drop;
-  reg          [63:0] reg_rx_pkts_recv;
-  reg          [63:0] reg_rx_bytes_recv;
-  reg          [63:0] reg_rx_pkts_drop;
-  reg          [63:0] reg_rx_bytes_drop;
-  reg          [63:0] reg_rx_pkts_err;
-  reg          [63:0] reg_rx_bytes_err;
+  // Synchronize counters to axil_aclk domain (simple 2-stage synchronizer)
+  always @(posedge axil_aclk) begin
+    reg_tx_pkts_sent_axil  <= reg_tx_pkts_sent_axis;
+    reg_tx_bytes_sent_axil <= reg_tx_bytes_sent_axis;
+    reg_tx_pkts_drop_axil  <= reg_tx_pkts_drop_axis;
+    reg_tx_bytes_drop_axil <= reg_tx_bytes_drop_axis;
+    reg_rx_pkts_recv_axil  <= reg_rx_pkts_recv_axis;
+    reg_rx_bytes_recv_axil <= reg_rx_bytes_recv_axis;
+    reg_rx_pkts_drop_axil  <= reg_rx_pkts_drop_axis;
+    reg_rx_bytes_drop_axil <= reg_rx_bytes_drop_axis;
+    reg_rx_pkts_err_axil   <= reg_rx_pkts_err_axis;
+    reg_rx_bytes_err_axil  <= reg_rx_bytes_err_axis;
+  end
+
+  // Use axil_aclk domain registers for AXI-Lite readout
+  wire [63:0] reg_tx_pkts_sent  = reg_tx_pkts_sent_axil;
+  wire [63:0] reg_tx_bytes_sent = reg_tx_bytes_sent_axil;
+  wire [63:0] reg_tx_pkts_drop  = reg_tx_pkts_drop_axil;
+  wire [63:0] reg_tx_bytes_drop = reg_tx_bytes_drop_axil;
+  wire [63:0] reg_rx_pkts_recv  = reg_rx_pkts_recv_axil;
+  wire [63:0] reg_rx_bytes_recv = reg_rx_bytes_recv_axil;
+  wire [63:0] reg_rx_pkts_drop  = reg_rx_pkts_drop_axil;
+  wire [63:0] reg_rx_bytes_drop = reg_rx_bytes_drop_axil;
+  wire [63:0] reg_rx_pkts_err   = reg_rx_pkts_err_axil;
+  wire [63:0] reg_rx_bytes_err  = reg_rx_bytes_err_axil;
 
   wire                reg_en;
   wire                reg_we;
@@ -243,56 +269,56 @@ module packet_adapter_register (
 
   always @(posedge axis_aclk) begin
     if (~axil_aresetn) begin
-      reg_tx_pkts_sent  <= 0;
-      reg_tx_bytes_sent <= 0;
+      reg_tx_pkts_sent_axis  <= 0;
+      reg_tx_bytes_sent_axis <= 0;
     end
     else if (tx_pkt_sent) begin
-      reg_tx_pkts_sent  <= reg_tx_pkts_sent + 1;
-      reg_tx_bytes_sent <= reg_tx_bytes_sent + tx_bytes;
+      reg_tx_pkts_sent_axis  <= reg_tx_pkts_sent_axis + 1;
+      reg_tx_bytes_sent_axis <= reg_tx_bytes_sent_axis + tx_bytes;
     end
   end
 
   always @(posedge axis_aclk) begin
     if (~axil_aresetn) begin
-      reg_tx_pkts_drop  <= 0;
-      reg_tx_bytes_drop <= 0;
+      reg_tx_pkts_drop_axis  <= 0;
+      reg_tx_bytes_drop_axis <= 0;
     end
     else if (tx_pkt_drop) begin
-      reg_tx_pkts_drop  <= reg_tx_pkts_drop + 1;
-      reg_tx_bytes_drop <= reg_tx_bytes_drop + tx_bytes;
+      reg_tx_pkts_drop_axis  <= reg_tx_pkts_drop_axis + 1;
+      reg_tx_bytes_drop_axis <= reg_tx_bytes_drop_axis + tx_bytes;
     end
   end
 
   always @(posedge axis_aclk) begin
     if (~axil_aresetn) begin
-      reg_rx_pkts_recv  <= 0;
-      reg_rx_bytes_recv <= 0;
+      reg_rx_pkts_recv_axis  <= 0;
+      reg_rx_bytes_recv_axis <= 0;
     end
     else if (rx_pkt_recv) begin
-      reg_rx_pkts_recv  <= reg_rx_pkts_recv + 1;
-      reg_rx_bytes_recv <= reg_rx_bytes_recv + rx_bytes;
+      reg_rx_pkts_recv_axis  <= reg_rx_pkts_recv_axis + 1;
+      reg_rx_bytes_recv_axis <= reg_rx_bytes_recv_axis + rx_bytes;
     end
   end
 
   always @(posedge axis_aclk) begin
     if (~axil_aresetn) begin
-      reg_rx_pkts_drop  <= 0;
-      reg_rx_bytes_drop <= 0;
+      reg_rx_pkts_drop_axis  <= 0;
+      reg_rx_bytes_drop_axis <= 0;
     end
     else if (rx_pkt_drop) begin
-      reg_rx_pkts_drop  <= reg_rx_pkts_drop + 1;
-      reg_rx_bytes_drop <= reg_rx_bytes_drop + rx_bytes;
+      reg_rx_pkts_drop_axis  <= reg_rx_pkts_drop_axis + 1;
+      reg_rx_bytes_drop_axis <= reg_rx_bytes_drop_axis + rx_bytes;
     end
   end
 
   always @(posedge axis_aclk) begin
     if (~axil_aresetn) begin
-      reg_rx_pkts_err  <= 0;
-      reg_rx_bytes_err <= 0;
+      reg_rx_pkts_err_axis  <= 0;
+      reg_rx_bytes_err_axis <= 0;
     end
     else if (rx_pkt_err) begin
-      reg_rx_pkts_err  <= reg_rx_pkts_err + 1;
-      reg_rx_bytes_err <= reg_rx_bytes_err + rx_bytes;
+      reg_rx_pkts_err_axis  <= reg_rx_pkts_err_axis + 1;
+      reg_rx_bytes_err_axis <= reg_rx_bytes_err_axis + rx_bytes;
     end
   end
 

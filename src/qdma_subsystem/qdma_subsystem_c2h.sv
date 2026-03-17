@@ -475,7 +475,7 @@ assign mult_result = (qid_pidx << 11) + (qid_pidx << 8) + (qid_pidx << 6); // fo
   assign qdma_c2h_func=8'b0;
   
   
-  assign qid_index = (axis_c2h_tvalid)? axis_c2h_tuser_qid : qid_index_prev;  //1 
+  assign qid_index = (axis_c2h_tvalid & axis_c2h_tready)? axis_c2h_tuser_qid : qid_index_prev;  //1 
   
   // axis_qdma_c2h_ctrl_qid is sync with m_axis_qdma_c2h_t*
   assign m_axis_qdma_c2h_ctrl_qid = axis_qdma_c2h_ctrl_qid & qmask;

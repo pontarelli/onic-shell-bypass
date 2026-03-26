@@ -43,10 +43,15 @@
 // -----------------------------------------------------------------------------
 //  Address | Mode |          Description
 // 0x5400 - 0x54FE |  RW  | BRAM to hold per QID data - Each QID has 16 words (256B) of space:  
+// Q0  00 -     0F |  RW  | QID0 data
 //     00 -     07 |  RW  | qdma_c2h_pkt_addr
 //     08 -     0B |  RW  | reg_num_desc
 //     0C -     0F |  RW  | {qid_cidx,qdma_c2h_bypass_enable,qdma_c2h_pfch_tag}
-//     10 -     13 |  RW  | qid_packet_counter
+// Q1  10 -     1F |  RW  | QID1 data
+//..
+// Q15 F0 -     FF |  RW  | QID15 data
+
+//    500 -     03 |  RW  | qid_packet_counter
 //     14 -     FF |   -  | RESERVED
 // 0x5FF0          |  RW  | REG_RAM_INDIR_ADDR (QID)
 // -----------------------------------------------------------------------------
@@ -136,14 +141,17 @@ module qdma_subsystem_register (
   wire         [31:0] register_dout;
   
   // Check if the input address is in the range of the "queue" ram or "packet counter" ram 
-  assign address_in_qid_ram_range = (reg_addr[C_ADDR_W-1:0] >= 12'h400 && reg_addr[C_ADDR_W-1:0] < 12'h410);
-  assign address_in_packet_counter_ram_range = (reg_addr[C_ADDR_W-1:0] >= 12'h410 && reg_addr[C_ADDR_W-1:0] < 12'h414);
+  //assign address_in_qid_ram_range = (reg_addr[C_ADDR_W-1:0] >= 12'h400 && reg_addr[C_ADDR_W-1:0] < 12'h410);
+  //assign address_in_packet_counter_ram_range = (reg_addr[C_ADDR_W-1:0] >= 12'h410 && reg_addr[C_ADDR_W-1:0] < 12'h414);
+  assign address_in_qid_ram_range = (reg_addr[C_ADDR_W-1:0] >= 12'h400 && reg_addr[C_ADDR_W-1:0] < 12'h500);
+  assign address_in_packet_counter_ram_range = (reg_addr[C_ADDR_W-1:0] >= 12'h500 && reg_addr[C_ADDR_W-1:0] < 12'h504);
+
 
   // Enable write if address in range && register write enable is set
   assign qid_ram_we = reg_we && address_in_qid_ram_range;
   assign packet_counter_ram_we = reg_we && address_in_packet_counter_ram_range;
-  // For qid ram, address is qid + last 4 bits of reg addr (16 bytes)
-  assign qid_ram_addr = {qid_page_index[10:0], reg_addr[3:0]};
+  // For qid ram, address is qid + last 8 bits of reg addr (256 bytes)
+  assign qid_ram_addr = {qid_page_index[6:0], reg_addr[7:0]};
   // For packet counter ram, we have just one entry per queue -> address is only qid
   assign packet_counter_ram_addr = qid_page_index[10:0]; 
 

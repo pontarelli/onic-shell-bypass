@@ -425,7 +425,7 @@ always@(posedge axis_aclk) begin
 end
 
 ////25B (pad) + 4B + 4B +3B +2B + 4B +8B +14 ETH      
-assign m_axis_qdma_c2h_tdata = (debug[0])? {debug_tdata[511:344],timestamp, pkt_counter,qid_packet_counter,3'b0,packet_counter_ram_we,3'b0,qdma_c2h_bypass_enable,8'b0,1'b0,qdma_c2h_pfch_tag,5'b0, axis_qdma_c2h_ctrl_qid,reg_num_desc, qdma_c2h_pkt_addr + mult_result,debug_tdata[111:0]} : debug_tdata;
+assign m_axis_qdma_c2h_tdata = (debug[0])? {debug_tdata[511:376],timestamp,32'b0, pkt_counter,qid_packet_counter,3'b0,packet_counter_ram_we,3'b0,qdma_c2h_bypass_enable,8'b0,1'b0,qdma_c2h_pfch_tag,5'b0, axis_qdma_c2h_ctrl_qid,reg_num_desc, qdma_c2h_pkt_addr + mult_result,debug_tdata[111:0]} : debug_tdata;
 //assign mult_result = 12'h940*qid_pidx ; //2368*( packet_counter % reg_num_desc)
 assign mult_result = (qid_pidx << 11) + (qid_pidx << 8) + (qid_pidx << 6); // for better timing, use shift add to replace multiply
   

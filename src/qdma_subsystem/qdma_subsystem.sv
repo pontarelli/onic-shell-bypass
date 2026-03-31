@@ -791,7 +791,7 @@ module qdma_subsystem #(
       .axil_aresetn                    (axil_aresetn)
     );
     
-    assign axis_qdma_h2c_tdata_stamped = (debug[0])? {axis_qdma_h2c_tdata[511:376],timestamp,axis_qdma_h2c_tdata[343:0]} : axis_qdma_h2c_tdata;
+    assign axis_qdma_h2c_tdata_stamped = (debug[0])? {axis_qdma_h2c_tdata[511:408],timestamp,axis_qdma_h2c_tdata[375:0]} : axis_qdma_h2c_tdata;
 
     qdma_subsystem_c2h #(
       .NUM_PHYS_FUNC (NUM_PHYS_FUNC)

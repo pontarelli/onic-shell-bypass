@@ -18,6 +18,8 @@
 // Address range: 0x0000 - 0x0FFF
 // Address width: 12-bit
 //
+// User Logic Box @ 250MHz: 0x40000 - 0xFFFFF
+// free from 0x100000
 // Subsystem register description (0x4000 - 0x4FFF)
 // -----------------------------------------------------------------------------
 //  Address | Mode |          Description
@@ -145,6 +147,13 @@ module qdma_subsystem_register (
   //assign address_in_packet_counter_ram_range = (reg_addr[C_ADDR_W-1:0] >= 12'h410 && reg_addr[C_ADDR_W-1:0] < 12'h414);
   assign address_in_qid_ram_range = (reg_addr[C_ADDR_W-1:0] >= 12'h400 && reg_addr[C_ADDR_W-1:0] < 12'h500);
   assign address_in_packet_counter_ram_range = (reg_addr[C_ADDR_W-1:0] >= 12'h500 && reg_addr[C_ADDR_W-1:0] < 12'h504);
+
+  // 2048 queues max, address in the data. Data is 11 bits for address, 1 bit for bypass, 7 bits for tag, 13 bits for cidx.
+  //assign qid_ram_addr = (reg_addr[C_ADDR_W-1:0] == 12'h40C) ? {reg_din[31:21],4'hc}  : {qid_page_index[6:0], reg_addr[7:0]};
+
+  // 128x16 queues max, address in the data. Data is 8 bits for address, 1 bit for bypass, 7 bits for tag, 16 bits for cidx.
+  //assign qid_ram_addr= ((reg_addr[11:8] == 4'h4) && (reg_addr[3:0] == 4'hC)) ? {reg_din[30:24],reg_addr[7:4],4'hC}  : {qid_page_index[6:0], reg_addr[7:0]};
+  
 
 
   // Enable write if address in range && register write enable is set

@@ -24,8 +24,8 @@
 // -----------------------------------------------------------------------------
 //  Address | Mode |          Description
 // -----------------------------------------------------------------------------
-//   0x5110 |  RW  |  UNUSED
-//   0x5114 |  RW  |  UNUSED
+//   0x5110 |  RW  |  REG_PCIE_ADDR_LOW
+//   0x5114 |  RW  |  REG_PCIE_ADDR_HIGH
 //   0x5118 |  RW  |  UNUSED
 //   0x511C |  RW  |  UNUSED
 //   0x5120 |  RW  |  UNUSED
@@ -93,6 +93,9 @@ module qdma_subsystem_register (
   output reg        reg_fence,
   output reg [10:0] reg_qmask,
 
+  output reg [31:0] reg_pcie_address_low,
+  output reg [31:0] reg_pcie_address_high,
+
   
   input      [31:0] pkt_counter,
   input      [31:0] full_counter,
@@ -107,6 +110,8 @@ module qdma_subsystem_register (
   localparam MODULE_ID = 32'hA9DBEA;
   
   localparam REG_PKT_COUNTER    = 12'h12C;
+  localparam REG_PCIE_ADDRESS_LOW = 12'h110;
+  localparam REG_PCIE_ADDRESS_HIGH = 12'h114;
   localparam REG_MODULE_ID      = 12'h144;
   localparam REG_DEBUG          = 12'h148;
   localparam REG_FULL_COUNTER   = 12'h14C;
@@ -125,6 +130,9 @@ module qdma_subsystem_register (
   reg [31:0] reg_debug_axis_ff1;
   reg [10:0] reg_qmask_axil;
   reg [10:0] reg_qmask_axil_ff1;
+
+  reg [31:0] reg_pcie_address_low;
+  reg [31:0] reg_pcie_address_high;
 
   wire [31:0] qid_ram_douta;
   wire [14:0] qid_ram_addr;
@@ -247,6 +255,12 @@ module qdma_subsystem_register (
     end
     else if (reg_en && ~reg_we) begin
       case (reg_addr)
+        REG_PCIE_ADDRESS_LOW: begin
+          reg_dout <= reg_pcie_address_low;
+        end
+        REG_PCIE_ADDRESS_HIGH: begin
+          reg_dout <= reg_pcie_address_high;
+        end
         REG_PKT_COUNTER: begin
             reg_dout <= pkt_counter;
         end
@@ -280,9 +294,17 @@ module qdma_subsystem_register (
         reg_debug_axil <= 0;
         reg_qmask_axil <= 11'h7ff;
         reg_fence_axil <= 0;
+        reg_pcie_address_low <= 0;
+        reg_pcie_address_high <= 0;
     end else begin
         if (reg_en && reg_we) begin
             case (reg_addr)
+                REG_PCIE_ADDRESS_LOW: begin
+                  reg_pcie_address_low <= reg_din;
+                end
+                REG_PCIE_ADDRESS_HIGH: begin
+                  reg_pcie_address_high <= reg_din;
+                end
                 REG_DEBUG: begin
                     reg_debug_axil <= reg_din;
                 end

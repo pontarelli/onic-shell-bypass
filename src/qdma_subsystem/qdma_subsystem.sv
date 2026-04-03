@@ -279,9 +279,66 @@ module qdma_subsystem #(
   wire      [511:0] axis_qdma_h2c_tdata_stamped;
     
   wire         axil_aresetn;
-  
-  
-  
+
+  // CSR AXI-Lite slave (lines 444-463)
+  wire         csr_prog_done;
+  wire  [31:0] s_axil_csr_awaddr;
+  wire   [2:0] s_axil_csr_awprot;
+  wire         s_axil_csr_awvalid;
+  wire         s_axil_csr_awready;
+  wire  [31:0] s_axil_csr_wdata;
+  wire   [3:0] s_axil_csr_wstrb;
+  wire         s_axil_csr_wvalid;
+  wire         s_axil_csr_wready;
+  wire         s_axil_csr_bvalid;
+  wire   [1:0] s_axil_csr_bresp;
+  wire         s_axil_csr_bready;
+  wire  [31:0] s_axil_csr_araddr;
+  wire   [2:0] s_axil_csr_arprot;
+  wire         s_axil_csr_arvalid;
+  wire         s_axil_csr_arready;
+  wire  [31:0] s_axil_csr_rdata;
+  wire   [1:0] s_axil_csr_rresp;
+  wire         s_axil_csr_rvalid;
+  wire         s_axil_csr_rready;
+
+  // AXI Bridge Slave (lines 466-500)
+  wire   [3:0] s_axib_awid;
+  wire  [63:0] s_axib_awaddr;
+  wire   [3:0] s_axib_awregion;
+  wire   [7:0] s_axib_awlen;
+  wire   [2:0] s_axib_awsize;
+  wire   [1:0] s_axib_awburst;
+  wire         s_axib_awvalid;
+  wire         s_axib_awready;
+  wire  [11:0] s_axib_awuser;
+  wire [511:0] s_axib_wdata;
+  wire  [63:0] s_axib_wstrb;
+  wire         s_axib_wlast;
+  wire         s_axib_wvalid;
+  wire         s_axib_wready;
+  wire  [63:0] s_axib_wuser;
+  wire   [3:0] s_axib_bid;
+  wire   [1:0] s_axib_bresp;
+  wire         s_axib_bvalid;
+  wire         s_axib_bready;
+  wire   [3:0] s_axib_arid;
+  wire  [63:0] s_axib_araddr;
+  wire   [3:0] s_axib_arregion;
+  wire   [7:0] s_axib_arlen;
+  wire   [2:0] s_axib_arsize;
+  wire   [1:0] s_axib_arburst;
+  wire         s_axib_arvalid;
+  wire         s_axib_arready;
+  wire  [11:0] s_axib_aruser;
+  wire   [3:0] s_axib_rid;
+  wire [511:0] s_axib_rdata;
+  wire   [1:0] s_axib_rresp;
+  wire         s_axib_rlast;
+  wire         s_axib_rvalid;
+  wire         s_axib_rready;
+  wire  [63:0] s_axib_ruser;
+
   // Reset is clocked by the 125MHz AXI-Lite clock
   generic_reset #(
     .NUM_INPUT_CLK  (1),
@@ -438,6 +495,66 @@ module qdma_subsystem #(
     .c2h_byp_in_st_csh_func          (c2h_byp_in_st_csh_func),
     .c2h_byp_in_st_csh_pfch_tag      (c2h_byp_in_st_csh_pfch_tag),
     .c2h_byp_in_st_csh_rdy           (c2h_byp_in_st_csh_rdy),
+
+      
+    // Add module signals for the input/output signals commented out below
+  .csr_prog_done(csr_prog_done),
+  .s_axil_csr_awaddr(s_axil_csr_awaddr), // 32 bits
+  .s_axil_csr_awprot(s_axil_csr_awprot), // 3 bits
+  .s_axil_csr_awvalid(s_axil_csr_awvalid),
+  .s_axil_csr_awready(s_axil_csr_awready),
+  .s_axil_csr_wdata(s_axil_csr_wdata), // 32 bits
+  .s_axil_csr_wstrb(s_axil_csr_wstrb), // 4 bits
+  .s_axil_csr_wvalid(s_axil_csr_wvalid),
+  .s_axil_csr_wready(s_axil_csr_wready),
+  .s_axil_csr_bvalid(s_axil_csr_bvalid),
+  .s_axil_csr_bresp(s_axil_csr_bresp), // 2 bits
+  .s_axil_csr_bready(s_axil_csr_bready),
+  .s_axil_csr_araddr(s_axil_csr_araddr), // 32 bits
+  .s_axil_csr_arprot(s_axil_csr_arprot), // 3 bits
+  .s_axil_csr_arvalid(s_axil_csr_arvalid),
+  .s_axil_csr_arready(s_axil_csr_arready),
+  .s_axil_csr_rdata(s_axil_csr_rdata), // 32 bits
+  .s_axil_csr_rresp(s_axil_csr_rresp), // 2 bits
+  .s_axil_csr_rvalid(s_axil_csr_rvalid),
+  .s_axil_csr_rready(s_axil_csr_rready),
+
+  //// AXI Bridge Slave
+  .s_axib_awid(s_axib_awid),         // 4 bits
+  .s_axib_awaddr(s_axib_awaddr),     // 64 bits
+  .s_axib_awregion(s_axib_awregion), // 4 bits
+  .s_axib_awlen(s_axib_awlen),       // 8 bits
+  .s_axib_awsize(s_axib_awsize),     // 3 bits
+  .s_axib_awburst(s_axib_awburst),   // 2 bits
+  .s_axib_awvalid(s_axib_awvalid),
+  .s_axib_wdata(s_axib_wdata),       // 512 bits
+  .s_axib_wstrb(s_axib_wstrb),       // 64 bits
+  .s_axib_wlast(s_axib_wlast),
+  .s_axib_wvalid(s_axib_wvalid),
+  .s_axib_wuser(s_axib_wuser),       // 64 bits
+  .s_axib_ruser(s_axib_ruser),       // 64 bits
+  .s_axib_bready(s_axib_bready),
+  .s_axib_arid(s_axib_arid),         // 4 bits
+  .s_axib_araddr(s_axib_araddr),     // 64 bits
+  .s_axib_aruser(s_axib_aruser),     // 12 bits
+  .s_axib_awuser(s_axib_awuser),     // 12 bits
+  .s_axib_arregion(s_axib_arregion), // 4 bits
+  .s_axib_arlen(s_axib_arlen),       // 8 bits
+  .s_axib_arsize(s_axib_arsize),     // 3 bits
+  .s_axib_arburst(s_axib_arburst),   // 2 bits
+  .s_axib_arvalid(s_axib_arvalid),
+  .s_axib_rready(s_axib_rready),
+  .s_axib_awready(s_axib_awready),
+  .s_axib_wready(s_axib_wready),
+  .s_axib_bid(s_axib_bid),           // 4 bits
+  .s_axib_bresp(s_axib_bresp),       // 2 bits
+  .s_axib_bvalid(s_axib_bvalid),
+  .s_axib_arready(s_axib_arready),
+  .s_axib_rid(s_axib_rid),           // 4 bits
+  .s_axib_rdata(s_axib_rdata),       // 512 bits
+  .s_axib_rresp(s_axib_rresp),       // 2 bits
+  .s_axib_rlast(s_axib_rlast),
+  .s_axib_rvalid(s_axib_rvalid),
 
     .fence                           (fence),
     .pcie_refclk                     (pcie_refclk),
@@ -656,9 +773,67 @@ module qdma_subsystem #(
     wire                         c2h_status_valid;
     wire                  [15:0] c2h_status_bytes;
     wire                   [1:0] c2h_status_func_id;
-    
-    
-    
+
+    // AXI write master from c2h to QDMA AXI Bridge Slave (FPGA -> host MemWr)
+    wire                         m_axib_awvalid;
+    wire                         m_axib_awready;
+    wire                  [63:0] m_axib_awaddr;
+    wire                   [7:0] m_axib_awlen;
+    wire                   [2:0] m_axib_awsize;
+    wire                   [1:0] m_axib_awburst;
+    wire                         m_axib_wvalid;
+    wire                         m_axib_wready;
+    wire                  [31:0] m_axib_wdata;
+    wire                   [3:0] m_axib_wstrb;
+    wire                         m_axib_wlast;
+    wire                         m_axib_bvalid;
+    wire                         m_axib_bready;
+    wire                   [1:0] m_axib_bresp;
+
+    // PCIe host-memory address registers (from reg_inst, consumed by c2h_inst)
+    wire                  [31:0] reg_pcie_address_low;
+    wire                  [31:0] reg_pcie_address_high;
+
+    // Connect c2h narrow AXI write master to QDMA AXI Bridge Slave (s_axib_*)
+    // AW channel: c2h drives slave inputs; unused ID/region/user fields zeroed
+    assign s_axib_awid     = 4'd0;
+    assign s_axib_awaddr   = m_axib_awaddr;
+    assign s_axib_awregion = 4'd0;
+    assign s_axib_awlen    = m_axib_awlen;
+    assign s_axib_awsize   = m_axib_awsize;
+    assign s_axib_awburst  = m_axib_awburst;
+    assign s_axib_awvalid  = m_axib_awvalid;
+    assign s_axib_awuser   = 12'd0;
+    assign m_axib_awready  = s_axib_awready;
+
+    // W channel: 32-bit wdata zero-extended to 512 bits; wstrb zero-extended to 64 bits
+    assign s_axib_wdata    = {{480{1'b0}}, m_axib_wdata};
+    assign s_axib_wstrb    = {{60{1'b0}}, m_axib_wstrb};
+    assign s_axib_wlast    = m_axib_wlast;
+    assign s_axib_wvalid   = m_axib_wvalid;
+    assign s_axib_wuser    = 64'd0;
+    assign m_axib_wready   = s_axib_wready;
+
+    // B channel: slave returns response to c2h master
+    assign m_axib_bvalid   = s_axib_bvalid;
+    assign m_axib_bresp    = s_axib_bresp;
+    assign s_axib_bready   = m_axib_bready;
+
+    // AR/R channel: c2h only writes, no reads — tie off AR inputs and R output
+    assign s_axib_arid     = 4'd0;
+    assign s_axib_araddr   = 64'd0;
+    assign s_axib_arregion = 4'd0;
+    assign s_axib_arlen    = 8'd0;
+    assign s_axib_arsize   = 3'd0;
+    assign s_axib_arburst  = 2'd0;
+    assign s_axib_arvalid  = 1'b0;
+    assign s_axib_aruser   = 12'd0;
+    assign s_axib_rready   = 1'b1;
+    // s_axib_ruser, s_axib_rid, s_axib_rdata, s_axib_rresp, s_axib_rlast,
+    // s_axib_rvalid, s_axib_arready are outputs from the wrapper; left unconnected
+
+
+
 
 
     qdma_subsystem_address_map #(
@@ -755,6 +930,9 @@ module qdma_subsystem #(
       .external_qid_data(qid_data),
       .pkt_counter(pkt_counter),
       .full_counter(full_counter),
+
+      .reg_pcie_address_low  (reg_pcie_address_low),
+      .reg_pcie_address_high (reg_pcie_address_high),
 
       .axil_aclk      (axil_cfg_aclk),
       .axis_aclk      (axis_aclk),
@@ -860,6 +1038,25 @@ module qdma_subsystem #(
       .c2h_status_valid                     (c2h_status_valid),
       .c2h_status_bytes                     (c2h_status_bytes),
       .c2h_status_func_id                   (c2h_status_func_id),
+
+      // AXI write master -> QDMA AXI Bridge Slave (FPGA -> host MemWr)
+      .m_axib_awvalid                       (m_axib_awvalid),
+      .m_axib_awready                       (m_axib_awready),
+      .m_axib_awaddr                        (m_axib_awaddr),
+      .m_axib_awlen                         (m_axib_awlen),
+      .m_axib_awsize                        (m_axib_awsize),
+      .m_axib_awburst                       (m_axib_awburst),
+      .m_axib_wvalid                        (m_axib_wvalid),
+      .m_axib_wready                        (m_axib_wready),
+      .m_axib_wdata                         (m_axib_wdata),
+      .m_axib_wstrb                         (m_axib_wstrb),
+      .m_axib_wlast                         (m_axib_wlast),
+      .m_axib_bvalid                        (m_axib_bvalid),
+      .m_axib_bready                        (m_axib_bready),
+      .m_axib_bresp                         (m_axib_bresp),
+
+      .reg_pcie_address_low                 (reg_pcie_address_low),
+      .reg_pcie_address_high                (reg_pcie_address_high),
 
       .axis_aclk                            (axis_aclk),
       .axil_aresetn                         (axil_aresetn)

@@ -88,6 +88,25 @@ module qdma_subsystem_c2h #(
   output                 [15:0] c2h_status_bytes,
   output reg              [1:0] c2h_status_func_id,
 
+  // AXI write master – used to push qid_pidx updates into host RAM via PCIe MemWr
+  output                        m_axib_awvalid,
+  input                         m_axib_awready,
+  output                 [63:0] m_axib_awaddr,
+  output                  [7:0] m_axib_awlen,
+  output                  [2:0] m_axib_awsize,
+  output                  [1:0] m_axib_awburst,
+  output                        m_axib_wvalid,
+  input                         m_axib_wready,
+  output                 [31:0] m_axib_wdata,
+  output                  [3:0] m_axib_wstrb,
+  output                        m_axib_wlast,
+  input                         m_axib_bvalid,
+  output                        m_axib_bready,
+  input                   [1:0] m_axib_bresp,
+  // For the moment, use register to take PCIe address
+  input                [31:0] reg_pcie_address_low,
+  input                [31:0] reg_pcie_address_high,
+
   input                         axis_aclk,
   input                         axil_aresetn
 );
@@ -267,6 +286,8 @@ module qdma_subsystem_c2h #(
   assign m_axis_qdma_c2h_tcrc          = crc32_out;
   assign m_axis_qdma_c2h_ctrl_marker   = 1'b0;
   assign m_axis_qdma_c2h_ctrl_port_id  = 0;
+  // Disable completion packets
+  //assign m_axis_qdma_c2h_ctrl_has_cmpt = 1'b0;
   assign m_axis_qdma_c2h_ctrl_has_cmpt = 1'b1;
   assign m_axis_qdma_c2h_ctrl_ecc      = c2h_ecc;
 
@@ -359,6 +380,9 @@ module qdma_subsystem_c2h #(
   );
 
   assign cpl_fifo_wr_en = m_axis_qdma_c2h_tvalid && m_axis_qdma_c2h_tlast && m_axis_qdma_c2h_tready;
+  // Avoid writing to the FIFO -> disable completion packet transmission for better performance, 
+  // as the completion packet is not actually needed for posted packets in this design
+  //assign cpl_fifo_wr_en = 1'b0; // completion packet transmission disabled
   assign cpl_fifo_din   = {axis_qdma_c2h_ctrl_qid, 16'(pkt_pld_id + 1), m_axis_qdma_c2h_ctrl_len};
   assign cpl_fifo_rd_en = m_axis_qdma_cpl_tvalid && m_axis_qdma_cpl_tready; 
 
@@ -485,6 +509,24 @@ assign mult_result = (qid_pidx << 11) + (qid_pidx << 8) + (qid_pidx << 6); // fo
   assign qid_pidx=  qid_packet_counter[15:0]  & (reg_num_desc-1); //2
   
   
+  // pidx FIFO signals – 27b: {qid[10:0], qid_pidx[15:0]}
+  wire        pidx_fifo_wr_en;
+  wire [26:0] pidx_fifo_din;
+  wire        pidx_fifo_rd_en;
+  wire [26:0] pidx_fifo_dout;
+  wire        pidx_fifo_empty;
+  wire        pidx_fifo_full;
+
+  // AXI write-master state machine
+  localparam AXI_IDLE   = 2'd0;
+  localparam AXI_SEND   = 2'd1;
+  localparam AXI_WAIT_B = 2'd2;
+
+  reg  [1:0]  axi_wr_state;
+  reg  [10:0] pidx_qid_lat;
+  reg  [15:0] pidx_val_lat;
+  reg         aw_done, w_done;
+
   wire [10:0] level;
   wire low, mid; //, high;
   wire qid_pidx_256_aligned;
@@ -512,5 +554,111 @@ assign mult_result = (qid_pidx << 11) + (qid_pidx << 8) + (qid_pidx << 6); // fo
   
   assign byp_in_fifo_din = {qdma_c2h_pkt_addr + mult_result, m_axis_qdma_c2h_ctrl_port_id, axis_qdma_c2h_ctrl_qid, qdma_c2h_func, qdma_c2h_pfch_tag}; //2
   assign byp_in_fifo_wr_en =packet_counter_ram_we; //2
+
+  // -------------------------------------------------------------------
+  // pidx FIFO: written whenever a packet completes (packet_counter_ram_we).
+  // Stores the QID of the completing packet and its new PIDX value so
+  // the AXI write master can push it to host RAM.
+  // -------------------------------------------------------------------
+  assign pidx_fifo_wr_en = packet_counter_ram_we;
+  assign pidx_fifo_din   = {axis_qdma_c2h_ctrl_qid, qid_pidx};
+
+  xpm_fifo_sync #(
+    .DOUT_RESET_VALUE    ("0"),
+    .ECC_MODE            ("no_ecc"),
+    .FIFO_MEMORY_TYPE    ("auto"),
+    .FIFO_WRITE_DEPTH    (64),
+    .READ_DATA_WIDTH     (27),
+    .READ_MODE           ("fwft"),
+    .WRITE_DATA_WIDTH    (27)
+  ) pidx_fifo_inst (
+    .wr_en         (pidx_fifo_wr_en),
+    .din           (pidx_fifo_din),
+    .wr_ack        (),
+    .rd_en         (pidx_fifo_rd_en),
+    .data_valid    (),
+    .dout          (pidx_fifo_dout),
+    .wr_data_count (),
+    .rd_data_count (),
+    .empty         (pidx_fifo_empty),
+    .full          (pidx_fifo_full),
+    .almost_empty  (),
+    .almost_full   (),
+    .overflow      (),
+    .underflow     (),
+    .prog_empty    (),
+    .prog_full     (),
+    .sleep         (1'b0),
+    .sbiterr       (),
+    .dbiterr       (),
+    .injectsbiterr (1'b0),
+    .injectdbiterr (1'b0),
+    .wr_clk        (axis_aclk),
+    .rst           (~axil_aresetn),
+    .rd_rst_busy   (),
+    .wr_rst_busy   ()
+  );
+
+  // -------------------------------------------------------------------
+  // AXI write master: drains the pidx FIFO and generates single-beat
+  // AXI4 writes.  Address = qid * 4 (word-aligned), Data = qid_pidx.
+  // -------------------------------------------------------------------
+
+  // Pop the FIFO the cycle we first see data in IDLE state.
+  assign pidx_fifo_rd_en = (axi_wr_state == AXI_IDLE) && !pidx_fifo_empty;
+
+  always @(posedge axis_aclk) begin
+    if (~axil_aresetn) begin
+      axi_wr_state <= AXI_IDLE;
+      aw_done      <= 1'b0;
+      w_done       <= 1'b0;
+      pidx_qid_lat <= 11'd0;
+      pidx_val_lat <= 16'd0;
+    end else begin
+      case (axi_wr_state)
+        AXI_IDLE: begin
+          aw_done <= 1'b0;
+          w_done  <= 1'b0;
+          if (!pidx_fifo_empty) begin
+            // FWFT: dout is already valid; latch it on the same edge we pop.
+            pidx_qid_lat <= pidx_fifo_dout[26:16];
+            pidx_val_lat <= pidx_fifo_dout[15:0];
+            axi_wr_state <= AXI_SEND;
+          end
+        end
+
+        AXI_SEND: begin
+          if (!aw_done && m_axib_awready) aw_done <= 1'b1;
+          if (!w_done  && m_axib_wready)  w_done  <= 1'b1;
+          if ((aw_done || m_axib_awready) && (w_done || m_axib_wready))
+            axi_wr_state <= AXI_WAIT_B;
+        end
+
+        AXI_WAIT_B: begin
+          if (m_axib_bvalid)
+            axi_wr_state <= AXI_IDLE;
+        end
+
+        default: axi_wr_state <= AXI_IDLE;
+      endcase
+    end
+  end
+
+  // AW channel
+  assign m_axib_awvalid = (axi_wr_state == AXI_SEND) && !aw_done;
+  //assign m_axib_awaddr  = {53'b0, pidx_qid_lat, 2'b00}; // qid * 4
+  assign m_axib_awaddr  = {reg_pcie_address_high, reg_pcie_address_low}; // PCIe address from register
+  assign m_axib_awlen   = 8'd0;    // single beat
+  assign m_axib_awsize  = 3'b010;  // 4 bytes
+  assign m_axib_awburst = 2'b01;   // INCR
+
+  // W channel
+  assign m_axib_wvalid  = (axi_wr_state == AXI_SEND) && !w_done;
+  assign m_axib_wdata   = {16'b0, pidx_val_lat};
+  assign m_axib_wstrb   = 4'hf;
+  assign m_axib_wlast   = 1'b1;
+
+  // B channel
+  assign m_axib_bready  = (axi_wr_state == AXI_WAIT_B);
 
 endmodule: qdma_subsystem_c2h

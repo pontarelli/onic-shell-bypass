@@ -22,9 +22,17 @@ proc _do_impl {jobs {strategies ""}} {
     } else {
         set impl_runs "impl_1"
         set_property STRATEGY "[lindex $strategies 0]" [get_runs impl_1]
-	set_property STEPS.ROUTE_DESIGN.ARGS.DIRECTIVE AggressiveExplore [get_runs impl_1] 
-	set_property STEPS.POST_ROUTE_PHYS_OPT_DESIGN.IS_ENABLED true [get_runs impl_1]
-	set_property STEPS.POST_ROUTE_PHYS_OPT_DESIGN.ARGS.DIRECTIVE AggressiveExplore [get_runs impl_1]
+	set obj [get_runs impl_1]
+	set_property -name "steps.opt_design.is_enabled" -value "1" -objects $obj
+	set_property -name "steps.opt_design.args.directive" -value "Explore" -objects $obj
+	set_property -name "steps.place_design.args.directive" -value "WLDrivenBlockPlacement" -objects $obj
+	set_property -name "steps.phys_opt_design.is_enabled" -value "1" -objects $obj
+	set_property -name "steps.phys_opt_design.args.directive" -value "AggressiveFanoutOpt" -objects $obj
+	set_property -name "steps.route_design.args.directive" -value "AggressiveExplore" -objects $obj
+	set_property -name "steps.post_route_phys_opt_design.is_enabled" -value "1" -objects $obj
+	set_property -name "steps.post_route_phys_opt_design.args.directive" -value "AggressiveExplore" -objects $obj
+
+
         for {set i 1} {$i < [llength $strategies]} {incr i 1} {
             set r impl_[expr $i + 1]
             set s [lindex $strategies $i]

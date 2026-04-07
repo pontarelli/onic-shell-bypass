@@ -146,12 +146,14 @@ module qdma_subsystem_register (
   assign address_in_qid_ram_range = (reg_addr[C_ADDR_W-1:0] >= 12'h400 && reg_addr[C_ADDR_W-1:0] < 12'h500);
   assign address_in_packet_counter_ram_range = (reg_addr[C_ADDR_W-1:0] >= 12'h500 && reg_addr[C_ADDR_W-1:0] < 12'h504);
 
+  // 128x16 queues max, address in the data. Data is 8 bits for address, 1 bit for bypass, 7 bits for tag, 16 bits for cidx.
+  assign qid_ram_addr= ((reg_addr[11:8] == 4'h4) && (reg_addr[3:0] == 4'hC)) ? {reg_din[30:24],reg_addr[7:4],4'hC}  : {qid_page_index[6:0], reg_addr[7:0]};
 
   // Enable write if address in range && register write enable is set
   assign qid_ram_we = reg_we && address_in_qid_ram_range;
   assign packet_counter_ram_we = reg_we && address_in_packet_counter_ram_range;
   // For qid ram, address is qid + last 8 bits of reg addr (256 bytes)
-  assign qid_ram_addr = {qid_page_index[6:0], reg_addr[7:0]};
+  // assign qid_ram_addr = {qid_page_index[6:0], reg_addr[7:0]};
   // For packet counter ram, we have just one entry per queue -> address is only qid
   assign packet_counter_ram_addr = qid_page_index[10:0]; 
 

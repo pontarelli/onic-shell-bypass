@@ -59,8 +59,11 @@ module qdma_subsystem_c2h #(
   input                         m_axis_qdma_cpl_tready,
 
   input                  [31:0] debug,
+  input                  [31:0] enable_cmpt,
+  input                 [31:0] pidx_update_period,
   input                  [10:0] qmask,
-  
+  output                 [31:0] debug_status,
+
   output                 [10:0] qid_index,
   output                 [10:0] qid_index_update,
   output                        packet_counter_ram_we,
@@ -72,6 +75,8 @@ module qdma_subsystem_c2h #(
   output reg             [31:0] full_counter,
   output reg             [31:0] pkt_counter,
 
+  //output [31:0] wr_data_count,
+  //output [31:0] rd_data_count,
   
   // Simple-Bypass port info 
   output                         c2h_byp_in_st_csh_vld,
@@ -116,6 +121,8 @@ module qdma_subsystem_c2h #(
   wire [NUM_PHYS_FUNC-1:0] arb_fin;
   wire [NUM_PHYS_FUNC-1:0] arb_grant;
   wire                     arb_ready;
+
+  reg                [1:0] m_axib_bresp_reg; // for debug
 
   reg                      axis_c2h_tvalid;
   reg              [511:0] axis_c2h_tdata;
@@ -287,8 +294,8 @@ module qdma_subsystem_c2h #(
   assign m_axis_qdma_c2h_ctrl_marker   = 1'b0;
   assign m_axis_qdma_c2h_ctrl_port_id  = 0;
   // Disable completion packets
-  //assign m_axis_qdma_c2h_ctrl_has_cmpt = 1'b0;
-  assign m_axis_qdma_c2h_ctrl_has_cmpt = 1'b1;
+  assign m_axis_qdma_c2h_ctrl_has_cmpt = enable_cmpt[0];
+  //assign m_axis_qdma_c2h_ctrl_has_cmpt = 1'b1;
   assign m_axis_qdma_c2h_ctrl_ecc      = c2h_ecc;
 
   assign crc32_en   = axis_c2h_tvalid && axis_c2h_tready;
@@ -379,10 +386,10 @@ module qdma_subsystem_c2h #(
     .wr_rst_busy   ()
   );
 
-  assign cpl_fifo_wr_en = m_axis_qdma_c2h_tvalid && m_axis_qdma_c2h_tlast && m_axis_qdma_c2h_tready;
+  assign cpl_fifo_wr_en = m_axis_qdma_c2h_tvalid 
+    && m_axis_qdma_c2h_tlast && m_axis_qdma_c2h_tready && enable_cmpt[0]; //&& ~full_queue; //to be tested
   // Avoid writing to the FIFO -> disable completion packet transmission for better performance, 
   // as the completion packet is not actually needed for posted packets in this design
-  //assign cpl_fifo_wr_en = 1'b0; // completion packet transmission disabled
   assign cpl_fifo_din   = {axis_qdma_c2h_ctrl_qid, 16'(pkt_pld_id + 1), m_axis_qdma_c2h_ctrl_len};
   assign cpl_fifo_rd_en = m_axis_qdma_cpl_tvalid && m_axis_qdma_cpl_tready; 
 
@@ -560,17 +567,22 @@ assign mult_result = (qid_pidx << 11) + (qid_pidx << 8) + (qid_pidx << 6); // fo
   // Stores the QID of the completing packet and its new PIDX value so
   // the AXI write master can push it to host RAM.
   // -------------------------------------------------------------------
-  assign pidx_fifo_wr_en = packet_counter_ram_we;
+  assign pidx_fifo_wr_en = packet_counter_ram_we & ((qid_pidx & pidx_update_period[15:0]) == 16'b0); // write to FIFO when pidx update period is met
   assign pidx_fifo_din   = {axis_qdma_c2h_ctrl_qid, qid_pidx};
+
+  //assign wr_data_count[31:6] = 0;
+  //assign rd_data_count[31:6] = 0;
 
   xpm_fifo_sync #(
     .DOUT_RESET_VALUE    ("0"),
     .ECC_MODE            ("no_ecc"),
     .FIFO_MEMORY_TYPE    ("auto"),
-    .FIFO_WRITE_DEPTH    (64),
+    .FIFO_WRITE_DEPTH    (32),
     .READ_DATA_WIDTH     (27),
     .READ_MODE           ("fwft"),
     .WRITE_DATA_WIDTH    (27)
+    //.WR_DATA_COUNT_WIDTH (6),
+    //.RD_DATA_COUNT_WIDTH (6)
   ) pidx_fifo_inst (
     .wr_en         (pidx_fifo_wr_en),
     .din           (pidx_fifo_din),
@@ -578,8 +590,8 @@ assign mult_result = (qid_pidx << 11) + (qid_pidx << 8) + (qid_pidx << 6); // fo
     .rd_en         (pidx_fifo_rd_en),
     .data_valid    (),
     .dout          (pidx_fifo_dout),
-    .wr_data_count (),
-    .rd_data_count (),
+    //.wr_data_count (wr_data_count[5:0]),
+    //.rd_data_count (rd_data_count[5:0]),
     .empty         (pidx_fifo_empty),
     .full          (pidx_fifo_full),
     .almost_empty  (),
@@ -606,6 +618,9 @@ assign mult_result = (qid_pidx << 11) + (qid_pidx << 8) + (qid_pidx << 6); // fo
 
   // Pop the FIFO the cycle we first see data in IDLE state.
   assign pidx_fifo_rd_en = (axi_wr_state == AXI_IDLE) && !pidx_fifo_empty;
+
+  
+  assign debug_status = {3'b0,m_axib_bresp_reg,pidx_fifo_full, pidx_qid_lat, pidx_val_lat};
 
   always @(posedge axis_aclk) begin
     if (~axil_aresetn) begin
@@ -635,8 +650,10 @@ assign mult_result = (qid_pidx << 11) + (qid_pidx << 8) + (qid_pidx << 6); // fo
         end
 
         AXI_WAIT_B: begin
-          if (m_axib_bvalid)
+          if (m_axib_bvalid) begin
             axi_wr_state <= AXI_IDLE;
+            m_axib_bresp_reg <= m_axib_bresp; // for debug
+          end
         end
 
         default: axi_wr_state <= AXI_IDLE;

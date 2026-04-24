@@ -265,6 +265,11 @@ module qdma_subsystem #(
 
   wire             fence;
   wire      [31:0] debug;
+  wire      [31:0] debug_status;
+  wire [31:0] wr_data_count;
+  wire [31:0] rd_data_count;
+  wire      [31:0] enable_cmpt;
+  wire      [31:0] pidx_update_period;
   wire      [10:0] qmask;
   wire      [10:0] qid_index;
   wire      [10:0] qid_index_update;
@@ -920,6 +925,9 @@ module qdma_subsystem #(
       
       //C2H bypasss control signals
       .reg_debug(debug),
+      .reg_debug_status(debug_status),
+      .reg_enable_cmpt(enable_cmpt),
+      .reg_pidx_update_period(pidx_update_period),
       .reg_qmask(qmask),
       .external_qid_index(qid_index),
       .external_qid_index_update(qid_index_update),
@@ -933,6 +941,9 @@ module qdma_subsystem #(
 
       .reg_pcie_address_low  (reg_pcie_address_low),
       .reg_pcie_address_high (reg_pcie_address_high),
+
+      //.wr_data_count (wr_data_count),
+      //.rd_data_count (rd_data_count),
 
       .axil_aclk      (axil_cfg_aclk),
       .axis_aclk      (axis_aclk),
@@ -1009,7 +1020,12 @@ module qdma_subsystem #(
       .m_axis_qdma_cpl_ctrl_no_wrb_marker   (axis_qdma_cpl_ctrl_no_wrb_marker),
       .m_axis_qdma_cpl_tready               (axis_qdma_cpl_tready),
 
+      //.wr_data_count                      (wr_data_count),
+      //.rd_data_count                      (rd_data_count),
+
       .debug                               (debug),
+      .debug_status                        (debug_status),
+      .enable_cmpt                         (enable_cmpt),
       .qmask                               (qmask),
       
       .qid_index                           (qid_index),
@@ -1021,6 +1037,7 @@ module qdma_subsystem #(
       .packet_counter_ram_we512            (packet_counter_ram_we512),
       .qid_packet_counter                  (qid_packet_counter),
 
+      .pidx_update_period                  (pidx_update_period),
 
       .c2h_byp_in_st_csh_vld           (c2h_byp_in_st_csh_vld),
       .c2h_byp_in_st_csh_addr          (c2h_byp_in_st_csh_addr),

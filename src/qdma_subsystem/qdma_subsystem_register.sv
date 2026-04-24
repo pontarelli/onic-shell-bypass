@@ -26,10 +26,10 @@
 // -----------------------------------------------------------------------------
 //   0x5110 |  RW  |  REG_PCIE_ADDR_LOW
 //   0x5114 |  RW  |  REG_PCIE_ADDR_HIGH
-//   0x5118 |  RW  |  UNUSED
-//   0x511C |  RW  |  UNUSED
-//   0x5120 |  RW  |  UNUSED
-//   0x5124 |  RW  |  UNUSED
+//   0x5118 |  RW  |  REG_ENABLE_CMPT
+//   0x511C |  RW  |  REG_WR_DATA_COUNT 
+//   0x5120 |  RW  |  REG_RD_DATA_COUNT
+//   0x5124 |  RW  |  REG_PIDX_UPDATE_PERIOD 
 //   0x5128 |  RW  |  UNUSED
 //   0x512C |  RO  |  REG_PKT_COUNTER
 //   0x5130 |  RO  |  UNUSED
@@ -42,6 +42,7 @@
 //   0x514C |  RO  |  REG_FULL_COUNTER
 //   0x5150 |  RW  |  REG_QMASK
 //   0x5154 |  RW  |  REG_FENCE
+//   0x5158 |  WO  |  REG_DEBUG_STATUS
 // -----------------------------------------------------------------------------
 //  Address | Mode |          Description
 // 0x5400 - 0x54FE |  RW  | BRAM to hold per QID data - Each QID has 16 words (256B) of space:  
@@ -89,12 +90,20 @@ module qdma_subsystem_register (
   input            external_packet_counter_ram_we512,
   output    [31:0] external_qid_packet_counter,
   
+  input      [31:0] reg_debug_status,
   output reg [31:0] reg_debug,
   output reg        reg_fence,
   output reg [10:0] reg_qmask,
 
   output reg [31:0] reg_pcie_address_low,
   output reg [31:0] reg_pcie_address_high,
+
+  output reg [31:0] reg_pidx_update_period,
+
+  //input     [31:0] wr_data_count,
+  //input     [31:0] rd_data_count,
+
+  output reg [31:0] reg_enable_cmpt,
 
   
   input      [31:0] pkt_counter,
@@ -112,11 +121,16 @@ module qdma_subsystem_register (
   localparam REG_PKT_COUNTER    = 12'h12C;
   localparam REG_PCIE_ADDRESS_LOW = 12'h110;
   localparam REG_PCIE_ADDRESS_HIGH = 12'h114;
+  localparam REG_ENABLE_CMPT = 12'h118;
+  localparam REG_WR_DATA_COUNT = 12'h11C;
+  localparam REG_RD_DATA_COUNT = 12'h120;
+  localparam REG_PIDX_UPDATE_PERIOD = 12'h124;
   localparam REG_MODULE_ID      = 12'h144;
   localparam REG_DEBUG          = 12'h148;
   localparam REG_FULL_COUNTER   = 12'h14C;
   localparam REG_QMASK          = 12'h150;
   localparam REG_FENCE          = 12'h154;
+  localparam REG_DEBUG_STATUS   = 12'h158;
   // From this point onwards, registers are reserved accessing bram
   localparam REG_RAM_BASE  = 12'h400;
   // Last register to access indirect address for dist ram
@@ -129,11 +143,21 @@ module qdma_subsystem_register (
   reg [31:0] reg_debug_axil;
   reg [31:0] reg_debug_axis_ff1;
   reg [10:0] reg_qmask_axil;
-  reg [10:0] reg_qmask_axil_ff1;
+  reg [10:0] reg_qmask_axis_ff1;
 
-  reg [31:0] reg_pcie_address_low;
-  reg [31:0] reg_pcie_address_high;
+  reg [31:0] reg_pcie_address_low_axil;
+  reg [31:0] reg_pcie_address_low_axis_ff1;
+  reg [31:0] reg_pcie_address_high_axil;
+  reg [31:0] reg_pcie_address_high_axis_ff1;
 
+  reg [31:0] reg_pidx_update_period_axil;
+  reg [31:0] reg_pidx_update_period_axis_ff1;
+
+  reg [31:0] reg_enable_cmpt_axil;
+  reg [31:0] reg_enable_cmpt_axis_ff1;
+
+
+  
   wire [31:0] qid_ram_douta;
   wire [14:0] qid_ram_addr;
   wire [10:0] packet_counter_ram_addr;
@@ -282,6 +306,21 @@ module qdma_subsystem_register (
         REG_FENCE: begin
           reg_dout <= reg_fence_axil;
         end
+        REG_DEBUG_STATUS: begin
+          reg_dout <= reg_debug_status;
+        end
+        REG_ENABLE_CMPT: begin
+          reg_dout <= reg_enable_cmpt_axil;
+        end
+        //REG_WR_DATA_COUNT: begin
+        //  reg_dout <= wr_data_count;
+        //end
+        //REG_RD_DATA_COUNT: begin
+        //  reg_dout <= rd_data_count;
+        //end
+        REG_PIDX_UPDATE_PERIOD: begin
+          reg_dout <= reg_pidx_update_period_axil;
+        end
         default: begin
                 reg_dout <= 32'hDEADBEEF;
             end
@@ -294,16 +333,18 @@ module qdma_subsystem_register (
         reg_debug_axil <= 0;
         reg_qmask_axil <= 11'h7ff;
         reg_fence_axil <= 0;
-        reg_pcie_address_low <= 0;
-        reg_pcie_address_high <= 0;
+        reg_pcie_address_low_axil <= 0;
+        reg_pcie_address_high_axil <= 0;
+        reg_enable_cmpt_axil <= 0;
+        reg_pidx_update_period_axil <= 1;
     end else begin
         if (reg_en && reg_we) begin
             case (reg_addr)
                 REG_PCIE_ADDRESS_LOW: begin
-                  reg_pcie_address_low <= reg_din;
+                  reg_pcie_address_low_axil <= reg_din;
                 end
                 REG_PCIE_ADDRESS_HIGH: begin
-                  reg_pcie_address_high <= reg_din;
+                  reg_pcie_address_high_axil <= reg_din;
                 end
                 REG_DEBUG: begin
                     reg_debug_axil <= reg_din;
@@ -317,6 +358,12 @@ module qdma_subsystem_register (
                 REG_FENCE: begin
                     reg_fence_axil <= reg_din;
                 end
+                REG_ENABLE_CMPT: begin
+                    reg_enable_cmpt_axil <= reg_din;
+                end
+                REG_PIDX_UPDATE_PERIOD: begin
+                    reg_pidx_update_period_axil <= reg_din;
+                end
                 default: begin
                 end
             endcase
@@ -326,25 +373,43 @@ module qdma_subsystem_register (
 
   // Synchronize fence control from AXI-Lite clock domain into AXIS clock domain.
   always @(posedge axis_aclk) begin
-    if (~axil_aresetn) begin
+    /*
+      if (~axil_aresetn) begin
       reg_fence_axis_ff1 <= 0;
       reg_fence <= 0;
       reg_debug_axis_ff1 <= 0;
       reg_debug <= 0;
-      reg_qmask_axil_ff1 <= 11'h7ff;
+      reg_qmask_axis_ff1 <= 11'h7ff;
       reg_qmask <= 11'h7ff;
-    end else begin
+      reg_pcie_address_low_axis_ff1 <=0;
+      reg_pcie_address_low <=0;
+      reg_pcie_address_high_axis_ff1 <=0;
+      reg_pcie_address_high <=0;
+      
+      
+    end else begin*/
       reg_fence_axis_ff1 <= reg_fence_axil;
       reg_fence <= reg_fence_axis_ff1;
       
       reg_debug_axis_ff1 <= reg_debug_axil;
       reg_debug <= reg_debug_axis_ff1;
       
-      reg_qmask_axil_ff1 <= reg_qmask_axil;
-      reg_qmask <= reg_qmask_axil_ff1;
+      reg_qmask_axis_ff1 <= reg_qmask_axil;
+      reg_qmask <= reg_qmask_axis_ff1;
       
+      reg_pcie_address_low_axis_ff1 <= reg_pcie_address_low_axil;
+      reg_pcie_address_low <= reg_pcie_address_low_axis_ff1;
+      
+      reg_pcie_address_high_axis_ff1 <= reg_pcie_address_high_axil;
+      reg_pcie_address_high <= reg_pcie_address_high_axis_ff1;
+      
+      reg_pidx_update_period_axis_ff1 <= reg_pidx_update_period_axil;
+      reg_pidx_update_period <= reg_pidx_update_period_axis_ff1;
 
-    end
+      reg_enable_cmpt_axis_ff1 <= reg_enable_cmpt_axil;
+      reg_enable_cmpt <= reg_enable_cmpt_axis_ff1;
+      
+    //end
   end
 
 endmodule: qdma_subsystem_register
